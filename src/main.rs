@@ -1,3 +1,7 @@
+mod ast;
+mod parse;
+
+use parse::parse;
 use rustyline::{DefaultEditor, Result, error::ReadlineError};
 
 fn main() -> Result<()> {
@@ -7,7 +11,10 @@ fn main() -> Result<()> {
         match read {
             Ok(line) => {
                 editor.add_history_entry(&line)?;
-                println!(" => {}", line);
+                match parse(&line) {
+                    Ok((_, expr)) => println!("{:?}", expr),
+                    Err(err) => eprint!("{}", err),
+                }
             }
             Err(ReadlineError::Interrupted) => {
                 println!("Interrupted");
