@@ -1,6 +1,8 @@
 mod ast;
+mod eval;
 mod parse;
 
+use eval::eval;
 use parse::parse;
 use rustyline::{DefaultEditor, Result, error::ReadlineError};
 
@@ -12,7 +14,7 @@ fn main() -> Result<()> {
             Ok(line) => {
                 editor.add_history_entry(&line)?;
                 match parse(&line) {
-                    Ok((_, expr)) => println!("{:?}", expr),
+                    Ok((_, expr)) => println!("{:?}", eval(expr)),
                     Err(err) => eprint!("{}", err),
                 }
             }
