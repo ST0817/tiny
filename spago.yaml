@@ -4,6 +4,7 @@ package:
     - console
     - effect
     - node-readline
+    - parsing
     - prelude
   test:
     main: Test.Main
