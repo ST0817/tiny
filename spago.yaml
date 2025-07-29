@@ -1,0 +1,13 @@
+package:
+  name: tiny
+  dependencies:
+    - console
+    - effect
+    - prelude
+  test:
+    main: Test.Main
+    dependencies: []
+workspace:
+  packageSet:
+    registry: 66.1.0
+  extraPackages: {}
