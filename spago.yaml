@@ -3,6 +3,7 @@ package:
   dependencies:
     - console
     - effect
+    - node-readline
     - prelude
   test:
     main: Test.Main
