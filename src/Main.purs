@@ -11,8 +11,8 @@ import Node.EventEmitter (on_)
 import Node.ReadLine (close, createConsoleInterface, lineH, noCompletion, prompt, setPrompt)
 import Parsing (runParser)
 import Parsing.String (parseErrorHuman)
-import Tiny.Evaluation (eval)
-import Tiny.Parsing (parseIntLit)
+import Tiny.Evaluation (evalExpr, runEvaluator)
+import Tiny.Parsing (parseExpr)
 
 main :: Effect Unit
 main = do
@@ -23,9 +23,12 @@ main = do
     "" -> prompt interface
     ":quit" -> close interface
     input -> do
-      case runParser input parseIntLit of
+      case runParser input parseExpr of
         Right expr -> do
           log $ "Ast: " <> show expr
-          logShow $ eval expr
+          case runEvaluator (evalExpr expr) of
+            Right result -> do
+              logShow result
+            Left err -> error err
         Left err -> error $ joinWith "\n" $ parseErrorHuman input 20 err
       prompt interface
