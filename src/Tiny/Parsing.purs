@@ -14,6 +14,9 @@ import Tiny.Ast (BinOp(..), Expr(..))
 
 data Prec
   = LowestPrec
+  | OrPrec
+  | AndPrec
+  | CompPrec
   | SumPrec
   | ProdPrec
 
@@ -31,18 +34,35 @@ symbol = tokenParser.symbol
 parseIntLit :: TinyParser Expr
 parseIntLit = IntLit <$> tokenParser.integer
 
-parseBinOp :: TinyParser { op :: BinOp, opPrec :: Prec, isRightAssoc :: Boolean }
-parseBinOp = symbol "+" $> { op: AddOp, opPrec: SumPrec, isRightAssoc: false }
-  <|> symbol "-" $> { op: SubOp, opPrec: SumPrec, isRightAssoc: false }
-  <|> symbol "*" $> { op: MulOp, opPrec: ProdPrec, isRightAssoc: false }
-  <|> symbol "/" $> { op: DivOp, opPrec: ProdPrec, isRightAssoc: false }
-  <|> symbol "^" $> { op: PowOp, opPrec: ProdPrec, isRightAssoc: true }
+parseBoolLit :: TinyParser Expr
+parseBoolLit = symbol "true" $> BoolLit true
+  <|> symbol "false" $> BoolLit false
+
+parseTerm :: TinyParser Expr
+parseTerm = parseIntLit <|> parseBoolLit
+
+binOp :: String -> BinOp -> Prec -> Boolean -> TinyParser { op :: BinOp, opPrec :: Prec, isRightAssoc :: Boolean }
+binOp str op opPrec isRightAssoc = symbol str $> { op, opPrec, isRightAssoc }
 
 parseExpr :: Prec -> TinyParser Expr
 parseExpr prec = do
-  first <- parseIntLit
+  first <- parseTerm
   rest <- many $ try do
-    { op, opPrec, isRightAssoc } <- parseBinOp
+    { op, opPrec, isRightAssoc } <-
+      binOp "**" PowOp ProdPrec true
+        <|> binOp "==" EqOp CompPrec false
+        <|> binOp "!=" NotEqOp CompPrec false
+        <|> binOp ">=" GEOp CompPrec false
+        <|> binOp "<=" LEOp CompPrec false
+        <|> binOp "&&" AndOp AndPrec false
+        <|> binOp "||" OrOp OrPrec false
+        <|> binOp "+" AddOp SumPrec false
+        <|> binOp "-" SubOp SumPrec false
+        <|> binOp "*" MulOp ProdPrec false
+        <|> binOp "/" DivOp ProdPrec false
+        <|> binOp "%" ModOp ProdPrec false
+        <|> binOp ">" GTOp CompPrec false
+        <|> binOp "<" LTOp CompPrec false
     guard $ opPrec > prec || isRightAssoc
     rhs <- parseExpr opPrec
     pure { op, rhs }
