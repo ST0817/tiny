@@ -21,4 +21,6 @@ evalExpr (BinExpr lhs op rhs) = do
     Tuple (IntLit lval) (IntLit rval) -> pure <<< IntLit $ case op of
       AddOp -> lval + rval
       SubOp -> lval - rval
+      MulOp -> lval * rval
+      DivOp -> lval / rval
     _ -> throwError "Invalid operation."

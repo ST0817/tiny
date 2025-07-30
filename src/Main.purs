@@ -12,7 +12,7 @@ import Node.ReadLine (close, createConsoleInterface, lineH, noCompletion, prompt
 import Parsing (runParser)
 import Parsing.String (parseErrorHuman)
 import Tiny.Evaluation (evalExpr, runEvaluator)
-import Tiny.Parsing (parseExpr)
+import Tiny.Parsing (OpPrec(..), parseExpr)
 
 main :: Effect Unit
 main = do
@@ -23,7 +23,7 @@ main = do
     "" -> prompt interface
     ":quit" -> close interface
     input -> do
-      case runParser input parseExpr of
+      case runParser input (parseExpr LowestPrec) of
         Right expr -> do
           log $ "Ast: " <> show expr
           case runEvaluator (evalExpr expr) of
