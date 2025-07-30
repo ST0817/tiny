@@ -1,11 +1,10 @@
-module Tiny.Parsing (OpPrec(..), parseExpr) where
+module Tiny.Parsing (Prec(..), parseExpr) where
 
 import Prelude
 
 import Control.Alt ((<|>))
 import Control.Alternative (guard)
 import Data.Array (foldl)
-import Data.Tuple (Tuple(..))
 import Parsing (Parser)
 import Parsing.Combinators (try)
 import Parsing.Combinators.Array (many)
@@ -13,13 +12,13 @@ import Parsing.Language (emptyDef)
 import Parsing.Token (TokenParser, makeTokenParser)
 import Tiny.Ast (BinOp(..), Expr(..))
 
-data OpPrec
+data Prec
   = LowestPrec
   | SumPrec
   | ProdPrec
 
-derive instance Eq OpPrec
-derive instance Ord OpPrec
+derive instance Eq Prec
+derive instance Ord Prec
 
 type TinyParser = Parser String
 
@@ -32,18 +31,19 @@ symbol = tokenParser.symbol
 parseIntLit :: TinyParser Expr
 parseIntLit = IntLit <$> tokenParser.integer
 
-parseBinOp :: TinyParser (Tuple BinOp OpPrec)
-parseBinOp = symbol "+" $> Tuple AddOp SumPrec
-  <|> symbol "-" $> Tuple SubOp SumPrec
-  <|> symbol "*" $> Tuple MulOp ProdPrec
-  <|> symbol "/" $> Tuple DivOp ProdPrec
+parseBinOp :: TinyParser { op :: BinOp, opPrec :: Prec, isRightAssoc :: Boolean }
+parseBinOp = symbol "+" $> { op: AddOp, opPrec: SumPrec, isRightAssoc: false }
+  <|> symbol "-" $> { op: SubOp, opPrec: SumPrec, isRightAssoc: false }
+  <|> symbol "*" $> { op: MulOp, opPrec: ProdPrec, isRightAssoc: false }
+  <|> symbol "/" $> { op: DivOp, opPrec: ProdPrec, isRightAssoc: false }
+  <|> symbol "^" $> { op: PowOp, opPrec: ProdPrec, isRightAssoc: true }
 
-parseExpr :: OpPrec -> TinyParser Expr
-parseExpr prevOpPrec = do
-  expr <- parseIntLit
+parseExpr :: Prec -> TinyParser Expr
+parseExpr prec = do
+  first <- parseIntLit
   rest <- many $ try do
-    Tuple op opPrec <- parseBinOp
-    guard $ opPrec > prevOpPrec
+    { op, opPrec, isRightAssoc } <- parseBinOp
+    guard $ opPrec > prec || isRightAssoc
     rhs <- parseExpr opPrec
-    pure $ Tuple op rhs
-  pure $ foldl (\lhs (Tuple op rhs) -> BinExpr lhs op rhs) expr rest
+    pure { op, rhs }
+  pure $ foldl (\lhs { op, rhs } -> BinExpr lhs op rhs) first rest

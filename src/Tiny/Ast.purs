@@ -2,13 +2,14 @@ module Tiny.Ast (BinOp(..), Expr(..)) where
 
 import Prelude
 
-data BinOp = AddOp | SubOp | MulOp | DivOp
+data BinOp = AddOp | SubOp | MulOp | DivOp | PowOp
 
 instance Show BinOp where
   show AddOp = "+"
   show SubOp = "-"
   show MulOp = "*"
   show DivOp = "/"
+  show PowOp = "^"
 
 data Expr
   = IntLit Int

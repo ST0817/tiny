@@ -12,7 +12,7 @@ import Node.ReadLine (close, createConsoleInterface, lineH, noCompletion, prompt
 import Parsing (runParser)
 import Parsing.String (parseErrorHuman)
 import Tiny.Evaluation (evalExpr, runEvaluator)
-import Tiny.Parsing (OpPrec(..), parseExpr)
+import Tiny.Parsing (Prec(..), parseExpr)
 
 main :: Effect Unit
 main = do

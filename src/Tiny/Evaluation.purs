@@ -4,6 +4,7 @@ import Prelude
 
 import Control.Monad.Except (Except, runExcept, throwError)
 import Data.Either (Either)
+import Data.Int (pow)
 import Data.Tuple (Tuple(..))
 import Tiny.Ast (BinOp(..), Expr(..))
 
@@ -23,4 +24,5 @@ evalExpr (BinExpr lhs op rhs) = do
       SubOp -> lval - rval
       MulOp -> lval * rval
       DivOp -> lval / rval
+      PowOp -> lval `pow` rval
     _ -> throwError "Invalid operation."
