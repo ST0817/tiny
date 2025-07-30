@@ -18,6 +18,8 @@ data BinOp
   | AndOp
   | OrOp
 
+derive instance Eq BinOp
+
 instance Show BinOp where
   show AddOp = "+"
   show SubOp = "-"
@@ -38,6 +40,8 @@ data Expr
   = IntLit Int
   | BoolLit Boolean
   | BinExpr Expr BinOp Expr
+
+derive instance Eq Expr
 
 instance Show Expr where
   show (IntLit value) = show value

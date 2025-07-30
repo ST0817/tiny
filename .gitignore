@@ -11,4 +11,5 @@ generated-docs/
 .psa*
 .spago
 
+/.spec-results
 /tiny
