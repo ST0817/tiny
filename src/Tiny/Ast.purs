@@ -2,6 +2,9 @@ module Tiny.Ast (BinOp(..), Expr(..), Stmt(..)) where
 
 import Prelude
 
+import Data.Maybe (Maybe(..))
+import Data.String (joinWith)
+
 data BinOp
   = AddOp
   | SubOp
@@ -57,9 +60,14 @@ instance Show Expr where
       <> show rhs
       <> ")"
 
-data Stmt = VarStmt String Expr
+data Stmt
+  = VarStmt String Expr
+  | IfStmt Expr (Array Stmt) (Maybe (Array Stmt))
 
 derive instance Eq Stmt
+
+showBlock :: Array Stmt -> String
+showBlock stmts = "{ " <> joinWith " " (show <$> stmts) <> " }"
 
 instance Show Stmt where
   show (VarStmt name value) =
@@ -68,3 +76,11 @@ instance Show Stmt where
       <> " = "
       <> show value
       <> ";"
+  show (IfStmt cond thenBody maybeElseBody) =
+    "if "
+      <> show cond
+      <> " "
+      <> showBlock thenBody
+      <> case maybeElseBody of
+        Just elseBody -> " else " <> showBlock elseBody
+        Nothing -> ""

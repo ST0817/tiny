@@ -4,6 +4,7 @@ import Prelude
 
 import Data.Array.NonEmpty (singleton)
 import Data.Either (Either(..))
+import Data.Maybe (Maybe(..))
 import Parsing (runParser)
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
@@ -106,3 +107,56 @@ spec = describe "parsing" do
       (runParser "var foo = 42;" parseStmts)
         `shouldEqual`
           Right (singleton $ VarStmt "foo" $ IntLit 42)
+
+    it "if statement (then only)" do
+      let
+        input =
+          """
+          if foo > 10 {
+              var bar = 1;
+          }
+          """
+        cond = BinExpr (Var "foo") GTOp (IntLit 10)
+        thenBody = [ VarStmt "bar" $ IntLit 1 ]
+      (runParser input $ parseStmts)
+        `shouldEqual`
+          Right (singleton $ IfStmt cond thenBody Nothing)
+
+    it "if statement (then and else)" do
+      let
+        input =
+          """
+          if foo > 10 {
+              var bar = 1;
+          } else {
+              var bar = 2;
+          }
+          """
+        cond = BinExpr (Var "foo") GTOp (IntLit 10)
+        thenBody = [ VarStmt "bar" $ IntLit 1 ]
+        elseBody = [ VarStmt "bar" $ IntLit 2 ]
+      (runParser input parseStmts)
+        `shouldEqual`
+          Right (singleton $ IfStmt cond thenBody $ Just elseBody)
+
+    it "if statement (else if)" do
+      let
+        input =
+          """
+          if foo > 10 {
+              var bar = 1;
+          } else if foo > 5 {
+              var bar = 2;
+          } else {
+              var bar = 3;
+          }
+          """
+        cond = BinExpr (Var "foo") GTOp (IntLit 10)
+        thenBody = [ VarStmt "bar" $ IntLit 1 ]
+        elseIfCond = BinExpr (Var "foo") GTOp (IntLit 5)
+        elseIfThenBody = [ VarStmt "bar" $ IntLit 2 ]
+        elseIfElseBody = [ VarStmt "bar" $ IntLit 3 ]
+        elseBody = [ IfStmt elseIfCond elseIfThenBody $ Just elseIfElseBody ]
+      (runParser input parseStmts)
+        `shouldEqual`
+          Right (singleton $ IfStmt cond thenBody $ Just elseBody)

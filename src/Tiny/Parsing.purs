@@ -1,13 +1,14 @@
-module Tiny.Parsing (parseSingleExpr, parseStmts) where
+module Tiny.Parsing (parseSingleExpr, parseStmt, parseStmts) where
 
-import Prelude
+import Prelude hiding (between)
 
 import Control.Alt ((<|>))
 import Control.Alternative (guard)
-import Data.Array (foldl)
+import Control.Lazy (defer)
+import Data.Array (foldl, singleton)
 import Data.Array.NonEmpty (NonEmptyArray)
 import Parsing (Parser)
-import Parsing.Combinators (try)
+import Parsing.Combinators (between, optionMaybe, try)
 import Parsing.Combinators.Array (many, many1)
 import Parsing.Language (emptyDef)
 import Parsing.String (eof)
@@ -107,10 +108,27 @@ parseVarStmt = VarStmt
   <*> ident
   <* symbol "="
   <*> parseExpr LowestPrec
+  <* symbol ";"
 
--- Stmt = VarStmt
+block :: TinyParser (Array Stmt)
+block = defer \_ -> between (symbol "{") (symbol "}") $ many parseStmt
+
+-- IfStmt = "if" Expr "{" Stmt* "}" ( "else" ( "{" Stmt* "}" ) | IfStmt )?
+-- ... } else if ... is desugared to ... } else { if ...
+parseIfStmt :: TinyParser Stmt
+parseIfStmt = defer \_ -> IfStmt
+  <$ symbol "if"
+  <*> parseExpr LowestPrec
+  <*> block
+  <*> optionMaybe (symbol "else" *> (singleton <$> parseIfStmt <|> block))
+
+-- Stmt
+--   = VarStmt
+--   | IfStmt
 parseStmt :: TinyParser Stmt
-parseStmt = parseVarStmt
+parseStmt = defer \_ ->
+  parseVarStmt
+    <|> parseIfStmt
 
 parseStmts :: TinyParser (NonEmptyArray Stmt)
-parseStmts = (many1 $ parseStmt <* symbol ";") <* eof
+parseStmts = tokenParser.whiteSpace *> (many1 $ parseStmt) <* eof

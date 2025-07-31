@@ -1,14 +1,16 @@
-module Tiny.Evaluation (Scope, evalExpr, evalStmt, runEvaluator) where
+module Tiny.Evaluation (evalExpr, evalStmt, runEvaluator) where
 
 import Prelude
 
 import Control.Monad.Except (Except, runExcept, throwError)
-import Control.Monad.State (StateT, get, modify_, runStateT)
+import Control.Monad.State (StateT, get, modify_, put, runStateT)
 import Data.Either (Either)
+import Data.Foldable (traverse_)
 import Data.Int (pow)
 import Data.Map (Map, insert, lookup)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple)
+import Data.Tuple.Nested ((/\))
 import Tiny.Ast (BinOp(..), Expr(..), Stmt(..))
 
 type Scope = Map String Expr
@@ -50,9 +52,23 @@ evalExpr (BinExpr lhs op rhs) = do
       _ -> throwError "Invalid operation."
     _ -> throwError "Invalid operation."
 
+evalInNewScope :: forall a. Evaluator a -> Evaluator a
+evalInNewScope evaluator = do
+  scope <- get
+  result <- evaluator
+  put scope
+  pure result
+
 evalStmt :: Stmt -> Evaluator Unit
 evalStmt (VarStmt name value) = do
   scope <- get
   case lookup name scope of
     Nothing -> modify_ $ insert name value
     Just _ -> throwError $ "Redefined variable: " <> name
+evalStmt (IfStmt cond thenBody maybeElseBody) = do
+  condResult <- evalExpr cond
+  case condResult /\ maybeElseBody of
+    (BoolLit true /\ _) -> evalInNewScope $ traverse_ evalStmt thenBody
+    (BoolLit false /\ Just elseBody) -> evalInNewScope $ traverse_ evalStmt elseBody
+    (BoolLit false /\ Nothing) -> pure unit
+    _ -> throwError "Invalid operation."
