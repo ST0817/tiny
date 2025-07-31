@@ -33,29 +33,46 @@ tokenParser = makeTokenParser emptyDef
 symbol :: String -> TinyParser String
 symbol = tokenParser.symbol
 
+-- Ident = [a-zA-Z]+
 ident :: TinyParser String
 ident = tokenParser.identifier
 
+-- IntLit = [0-9]+
 parseIntLit :: TinyParser Expr
 parseIntLit = IntLit <$> tokenParser.integer
 
+-- BoolLit = "true" | "false"
 parseBoolLit :: TinyParser Expr
 parseBoolLit =
   symbol "true" $> BoolLit true
     <|> symbol "false" $> BoolLit false
 
+-- Var = Ident
 parseVar :: TinyParser Expr
 parseVar = Var <$> ident
 
+-- Term
+--   = IntLit
+--   | BoolLit
+--   | Var
 parseTerm :: TinyParser Expr
 parseTerm =
   parseIntLit
     <|> parseBoolLit
     <|> parseVar
 
+-- BinOp
+--   = "+" | "-" | "*" | "/" | "%" | "**"
+--   | "==" | "!=" | ">" | "<" | ">=" | "<="
+--   | "&&" | "||"
 binOp :: String -> BinOp -> Prec -> Boolean -> TinyParser { op :: BinOp, opPrec :: Prec, isRightAssoc :: Boolean }
 binOp str op opPrec isRightAssoc = symbol str $> { op, opPrec, isRightAssoc }
 
+-- Expr
+--   = Term
+--   | BinExpr
+--
+-- BinExpr = Expr BinOp Expr
 parseExpr :: Prec -> TinyParser Expr
 parseExpr prec = do
   first <- parseTerm
@@ -83,6 +100,7 @@ parseExpr prec = do
 parseSingleExpr :: TinyParser Expr
 parseSingleExpr = parseExpr LowestPrec <* eof
 
+-- VarStmt = "var" Ident "=" Expr ";"
 parseVarStmt :: TinyParser Stmt
 parseVarStmt = VarStmt
   <$ symbol "var"
@@ -90,6 +108,7 @@ parseVarStmt = VarStmt
   <* symbol "="
   <*> parseExpr LowestPrec
 
+-- Stmt = VarStmt
 parseStmt :: TinyParser Stmt
 parseStmt = parseVarStmt
 
