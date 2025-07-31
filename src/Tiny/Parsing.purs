@@ -1,16 +1,18 @@
-module Tiny.Parsing (Prec(..), parseExpr) where
+module Tiny.Parsing (parseSingleExpr, parseStmts) where
 
 import Prelude
 
 import Control.Alt ((<|>))
 import Control.Alternative (guard)
 import Data.Array (foldl)
+import Data.Array.NonEmpty (NonEmptyArray)
 import Parsing (Parser)
 import Parsing.Combinators (try)
-import Parsing.Combinators.Array (many)
+import Parsing.Combinators.Array (many, many1)
 import Parsing.Language (emptyDef)
+import Parsing.String (eof)
 import Parsing.Token (TokenParser, makeTokenParser)
-import Tiny.Ast (BinOp(..), Expr(..))
+import Tiny.Ast (BinOp(..), Expr(..), Stmt(..))
 
 data Prec
   = LowestPrec
@@ -31,15 +33,25 @@ tokenParser = makeTokenParser emptyDef
 symbol :: String -> TinyParser String
 symbol = tokenParser.symbol
 
+ident :: TinyParser String
+ident = tokenParser.identifier
+
 parseIntLit :: TinyParser Expr
 parseIntLit = IntLit <$> tokenParser.integer
 
 parseBoolLit :: TinyParser Expr
-parseBoolLit = symbol "true" $> BoolLit true
-  <|> symbol "false" $> BoolLit false
+parseBoolLit =
+  symbol "true" $> BoolLit true
+    <|> symbol "false" $> BoolLit false
+
+parseVar :: TinyParser Expr
+parseVar = Var <$> ident
 
 parseTerm :: TinyParser Expr
-parseTerm = parseIntLit <|> parseBoolLit
+parseTerm =
+  parseIntLit
+    <|> parseBoolLit
+    <|> parseVar
 
 binOp :: String -> BinOp -> Prec -> Boolean -> TinyParser { op :: BinOp, opPrec :: Prec, isRightAssoc :: Boolean }
 binOp str op opPrec isRightAssoc = symbol str $> { op, opPrec, isRightAssoc }
@@ -67,3 +79,19 @@ parseExpr prec = do
     rhs <- parseExpr opPrec
     pure { op, rhs }
   pure $ foldl (\lhs { op, rhs } -> BinExpr lhs op rhs) first rest
+
+parseSingleExpr :: TinyParser Expr
+parseSingleExpr = parseExpr LowestPrec <* eof
+
+parseVarStmt :: TinyParser Stmt
+parseVarStmt = VarStmt
+  <$ symbol "var"
+  <*> ident
+  <* symbol "="
+  <*> parseExpr LowestPrec
+
+parseStmt :: TinyParser Stmt
+parseStmt = parseVarStmt
+
+parseStmts :: TinyParser (NonEmptyArray Stmt)
+parseStmts = (many1 $ parseStmt <* symbol ";") <* eof

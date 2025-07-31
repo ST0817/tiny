@@ -1,4 +1,4 @@
-module Tiny.Ast (BinOp(..), Expr(..)) where
+module Tiny.Ast (BinOp(..), Expr(..), Stmt(..)) where
 
 import Prelude
 
@@ -39,6 +39,7 @@ instance Show BinOp where
 data Expr
   = IntLit Int
   | BoolLit Boolean
+  | Var String
   | BinExpr Expr BinOp Expr
 
 derive instance Eq Expr
@@ -46,10 +47,24 @@ derive instance Eq Expr
 instance Show Expr where
   show (IntLit value) = show value
   show (BoolLit value) = show value
-  show (BinExpr lhs op rhs) = "("
-    <> show lhs
-    <> " "
-    <> show op
-    <> " "
-    <> show rhs
-    <> ")"
+  show (Var name) = name
+  show (BinExpr lhs op rhs) =
+    "("
+      <> show lhs
+      <> " "
+      <> show op
+      <> " "
+      <> show rhs
+      <> ")"
+
+data Stmt = VarStmt String Expr
+
+derive instance Eq Stmt
+
+instance Show Stmt where
+  show (VarStmt name value) =
+    "var "
+      <> name
+      <> " = "
+      <> show value
+      <> ";"
