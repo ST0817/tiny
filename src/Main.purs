@@ -2,12 +2,11 @@ module Main where
 
 import Prelude
 
-import Data.Array.NonEmpty (toArray)
 import Data.Either (Either(..))
 import Data.Foldable (traverse_)
 import Data.Map (empty)
 import Data.String (joinWith)
-import Data.Tuple (Tuple(..))
+import Data.Tuple.Nested ((/\))
 import Effect (Effect)
 import Effect.Class.Console (logShow)
 import Effect.Console (error, log)
@@ -35,16 +34,16 @@ main = do
           logShow expr
           scope <- read scopeRef
           case runEvaluator (evalExpr expr) scope of
-            Right (Tuple result _) -> do
+            Right (result /\ _) -> do
               log "Result:"
               logShow result
             Left err -> error err
         Left _ -> case runParser input parseStmts of
           Right stmts -> do
-            log $ "Ast:\n" <> (joinWith "\n" $ toArray $ show <$> stmts)
+            log $ "Ast:\n" <> (joinWith "\n" $ show <$> stmts)
             scope <- read scopeRef
             case runEvaluator (traverse_ evalStmt stmts) scope of
-              Right (Tuple _ scope') -> write scope' scopeRef
+              Right (_ /\ scope') -> write scope' scopeRef
               Left err -> error err
           Left err -> error $ joinWith "\n" $ parseErrorHuman input 20 err
       prompt interface

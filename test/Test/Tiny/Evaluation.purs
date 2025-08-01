@@ -5,7 +5,6 @@ import Prelude
 import Data.Either (Either(..))
 import Data.Map (empty, singleton)
 import Data.Maybe (Maybe(..))
-import Data.Tuple (Tuple(..))
 import Data.Tuple.Nested ((/\))
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
@@ -16,141 +15,203 @@ spec :: Spec Unit
 spec = describe "evaluation" do
   describe "expression" do
     it "integer literal" do
-      (runEvaluator (evalExpr $ IntLit 42) empty)
-        `shouldEqual`
-          Right (Tuple (IntLit 42) empty)
+      -- 42
+      shouldEqual
+        (runEvaluator (evalExpr $ IntLit 42) empty)
+        (Right $ IntLit 42 /\ empty)
 
     it "boolean literal" do
-      (runEvaluator (evalExpr $ BoolLit true) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit true) empty)
-      (runEvaluator (evalExpr $ BoolLit false) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit false) empty)
+      -- true
+      shouldEqual
+        (runEvaluator (evalExpr $ BoolLit true) empty)
+        (Right $ BoolLit true /\ empty)
+      -- false
+      shouldEqual
+        (runEvaluator (evalExpr $ BoolLit false) empty)
+        (Right $ BoolLit false /\ empty)
 
     it "variable" do
+      -- foo
+      -- -> 42
       let scope = singleton "foo" $ IntLit 42
-      (runEvaluator (evalExpr $ Var "foo") scope)
-        `shouldEqual`
-          Right (Tuple (IntLit 42) scope)
+      shouldEqual
+        (runEvaluator (evalExpr $ Var "foo") scope)
+        (Right $ IntLit 42 /\ scope)
 
     it "addition" do
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) AddOp (IntLit 53)) empty)
-        `shouldEqual`
-          Right (Tuple (IntLit 95) empty)
+      -- 42 + 53
+      -- -> 95
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) AddOp (IntLit 53)) empty)
+        (Right $ IntLit 95 /\ empty)
 
     it "subtraction" do
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) SubOp (IntLit 13)) empty)
-        `shouldEqual`
-          Right (Tuple (IntLit 29) empty)
+      -- 42 - 13
+      -- -> 29
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) SubOp (IntLit 13)) empty)
+        (Right $ IntLit 29 /\ empty)
 
     it "multiplication" do
-      (runEvaluator (evalExpr $ BinExpr (IntLit 13) MulOp (IntLit 6)) empty)
-        `shouldEqual`
-          Right (Tuple (IntLit 78) empty)
+      -- 13 * 6
+      -- -> 78
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 13) MulOp (IntLit 6)) empty)
+        (Right $ IntLit 78 /\ empty)
 
     it "division" do
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) DivOp (IntLit 13)) empty)
-        `shouldEqual`
-          Right (Tuple (IntLit 3) empty)
+      -- 42 / 13
+      -- -> 3
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) DivOp (IntLit 13)) empty)
+        (Right $ IntLit 3 /\ empty)
 
     it "modulo operation" do
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) ModOp (IntLit 13)) empty)
-        `shouldEqual`
-          Right (Tuple (IntLit 3) empty)
+      -- 42 % 13
+      -- -> 3
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) ModOp (IntLit 13)) empty)
+        (Right $ IntLit 3 /\ empty)
 
     it "power" do
-      (runEvaluator (evalExpr $ BinExpr (IntLit 4) PowOp (IntLit 3)) empty)
-        `shouldEqual`
-          Right (Tuple (IntLit 64) empty)
+      -- 4 ** 3
+      -- -> 64
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 4) PowOp (IntLit 3)) empty)
+        (Right $ IntLit 64 /\ empty)
 
     it "equal" do
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) EqOp (IntLit 42)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit true) empty)
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) EqOp (IntLit 13)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit false) empty)
+      -- 42 == 42
+      -- -> true
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) EqOp (IntLit 42)) empty)
+        (Right $ BoolLit true /\ empty)
+      -- 42 == 13
+      -- -> false
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) EqOp (IntLit 13)) empty)
+        (Right $ BoolLit false /\ empty)
 
     it "not equal" do
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) NotEqOp (IntLit 13)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit true) empty)
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) NotEqOp (IntLit 42)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit false) empty)
+      -- 42 != 13
+      -- -> true
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) NotEqOp (IntLit 13)) empty)
+        (Right $ BoolLit true /\ empty)
+      -- 42 != 42
+      -- -> false
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) NotEqOp (IntLit 42)) empty)
+        (Right $ BoolLit false /\ empty)
 
     it "greeter than" do
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) GTOp (IntLit 13)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit true) empty)
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) GTOp (IntLit 42)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit false) empty)
-      (runEvaluator (evalExpr $ BinExpr (IntLit 13) GTOp (IntLit 42)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit false) empty)
+      -- 42 > 13
+      -- -> true
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) GTOp (IntLit 13)) empty)
+        (Right $ BoolLit true /\ empty)
+      -- 42 > 42
+      -- -> false
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) GTOp (IntLit 42)) empty)
+        (Right $ BoolLit false /\ empty)
+      -- 13 > 42
+      -- -> false
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 13) GTOp (IntLit 42)) empty)
+        (Right $ BoolLit false /\ empty)
 
     it "less than" do
-      (runEvaluator (evalExpr $ BinExpr (IntLit 13) LTOp (IntLit 42)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit true) empty)
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) LTOp (IntLit 42)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit false) empty)
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) LTOp (IntLit 13)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit false) empty)
+      -- 13 < 42
+      -- -> true
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 13) LTOp (IntLit 42)) empty)
+        (Right $ BoolLit true /\ empty)
+      -- 42 < 42
+      -- -> false
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) LTOp (IntLit 42)) empty)
+        (Right $ BoolLit false /\ empty)
+      -- 42 < 13
+      -- -> false
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) LTOp (IntLit 13)) empty)
+        (Right $ BoolLit false /\ empty)
 
     it "greeter than or equal" do
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) GEOp (IntLit 13)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit true) empty)
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) GEOp (IntLit 42)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit true) empty)
-      (runEvaluator (evalExpr $ BinExpr (IntLit 13) GEOp (IntLit 42)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit false) empty)
+      -- 42 >= 13
+      -- -> true
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) GEOp (IntLit 13)) empty)
+        (Right $ BoolLit true /\ empty)
+      -- 42 >= 42
+      -- -> true
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) GEOp (IntLit 42)) empty)
+        (Right $ BoolLit true /\ empty)
+      -- 13 >= 42
+      -- -> false
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 13) GEOp (IntLit 42)) empty)
+        (Right $ BoolLit false /\ empty)
 
     it "less than or equal" do
-      (runEvaluator (evalExpr $ BinExpr (IntLit 13) LEOp (IntLit 42)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit true) empty)
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) LEOp (IntLit 42)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit true) empty)
-      (runEvaluator (evalExpr $ BinExpr (IntLit 42) LEOp (IntLit 13)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit false) empty)
+      -- 13 <= 42
+      -- -> true
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 13) LEOp (IntLit 42)) empty)
+        (Right $ BoolLit true /\ empty)
+      -- 42 <= 42
+      -- -> true
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) LEOp (IntLit 42)) empty)
+        (Right $ BoolLit true /\ empty)
+      -- 42 <= 13
+      -- -> false
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (IntLit 42) LEOp (IntLit 13)) empty)
+        (Right $ BoolLit false /\ empty)
 
     it "and" do
-      (runEvaluator (evalExpr $ BinExpr (BoolLit true) AndOp (BoolLit true)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit true) empty)
-      (runEvaluator (evalExpr $ BinExpr (BoolLit true) AndOp (BoolLit false)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit false) empty)
-      (runEvaluator (evalExpr $ BinExpr (BoolLit false) AndOp (BoolLit false)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit false) empty)
+      -- true && true
+      -- -> true
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (BoolLit true) AndOp (BoolLit true)) empty)
+        (Right $ BoolLit true /\ empty)
+      -- true && false
+      -- -> false
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (BoolLit true) AndOp (BoolLit false)) empty)
+        (Right $ BoolLit false /\ empty)
+      -- false && false
+      -- -> false
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (BoolLit false) AndOp (BoolLit false)) empty)
+        (Right $ BoolLit false /\ empty)
 
     it "or" do
-      (runEvaluator (evalExpr $ BinExpr (BoolLit true) OrOp (BoolLit true)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit true) empty)
-      (runEvaluator (evalExpr $ BinExpr (BoolLit true) OrOp (BoolLit false)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit true) empty)
-      (runEvaluator (evalExpr $ BinExpr (BoolLit false) OrOp (BoolLit false)) empty)
-        `shouldEqual`
-          Right (Tuple (BoolLit false) empty)
+      -- true || true
+      -- -> true
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (BoolLit true) OrOp (BoolLit true)) empty)
+        (Right $ BoolLit true /\ empty)
+      -- true || false
+      -- -> true
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (BoolLit true) OrOp (BoolLit false)) empty)
+        (Right $ BoolLit true /\ empty)
+      -- false || false
+      -- -> false
+      shouldEqual
+        (runEvaluator (evalExpr $ BinExpr (BoolLit false) OrOp (BoolLit false)) empty)
+        (Right $ BoolLit false /\ empty)
 
   describe "statement" do
+    -- var foo = 42;
     it "variable statement" do
-      (runEvaluator (evalStmt $ VarStmt "foo" (IntLit 42)) empty)
-        `shouldEqual`
-          Right (Tuple unit (singleton "foo" (IntLit 42)))
+      shouldEqual
+        (runEvaluator (evalStmt $ VarStmt "foo" (IntLit 42)) empty)
+        (Right $ unit /\ singleton "foo" (IntLit 42))
 
     -- if 20 > 10 {
     --     var bar = 1;
@@ -159,9 +220,9 @@ spec = describe "evaluation" do
       let
         cond = BinExpr (IntLit 20) GTOp (IntLit 10)
         thenBody = [ VarStmt "bar" $ IntLit 1 ]
-      (runEvaluator (evalStmt $ IfStmt cond thenBody Nothing) empty)
-        `shouldEqual`
-          Right (unit /\ empty)
+      shouldEqual
+        (runEvaluator (evalStmt $ IfStmt cond thenBody Nothing) empty)
+        (Right $ unit /\ empty)
 
     -- if 20 > 10 {
     --     var bar = 1;
@@ -173,9 +234,9 @@ spec = describe "evaluation" do
         cond = BinExpr (IntLit 20) GTOp (IntLit 10)
         thenBody = [ VarStmt "bar" $ IntLit 1 ]
         elseBody = [ VarStmt "bar" $ IntLit 2 ]
-      (runEvaluator (evalStmt $ IfStmt cond thenBody $ Just elseBody) empty)
-        `shouldEqual`
-          Right (unit /\ empty)
+      shouldEqual
+        (runEvaluator (evalStmt $ IfStmt cond thenBody $ Just elseBody) empty)
+        (Right $ unit /\ empty)
 
     -- if 20 > 10 {
     --     var bar = 1;
@@ -192,6 +253,6 @@ spec = describe "evaluation" do
         elseIfThenBody = [ VarStmt "bar" $ IntLit 2 ]
         elseIfElseBody = [ VarStmt "bar" $ IntLit 3 ]
         elseBody = [ IfStmt elseIfCond elseIfThenBody $ Just elseIfElseBody ]
-      (runEvaluator (evalStmt $ IfStmt cond thenBody $ Just elseBody) empty)
-        `shouldEqual`
-          Right (unit /\ empty)
+      shouldEqual
+        (runEvaluator (evalStmt $ IfStmt cond thenBody $ Just elseBody) empty)
+        (Right $ unit /\ empty)

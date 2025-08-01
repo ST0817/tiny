@@ -9,15 +9,14 @@ import Data.Foldable (traverse_)
 import Data.Int (pow)
 import Data.Map (Map, insert, lookup)
 import Data.Maybe (Maybe(..))
-import Data.Tuple (Tuple)
-import Data.Tuple.Nested ((/\))
+import Data.Tuple.Nested ((/\), type (/\))
 import Tiny.Ast (BinOp(..), Expr(..), Stmt(..))
 
 type Scope = Map String Expr
 
 type Evaluator = StateT Scope (Except String)
 
-runEvaluator :: forall a. Evaluator a -> Scope -> Either String (Tuple a Scope)
+runEvaluator :: forall a. Evaluator a -> Scope -> Either String (a /\ Scope)
 runEvaluator evaluator scope = runExcept $ runStateT evaluator scope
 
 evalExpr :: Expr -> Evaluator Expr
@@ -31,8 +30,8 @@ evalExpr (Var name) = do
 evalExpr (BinExpr lhs op rhs) = do
   lhsResult <- evalExpr lhs
   rhsResult <- evalExpr rhs
-  case { lhsResult, rhsResult } of
-    { lhsResult: (IntLit lval), rhsResult: (IntLit rval) } -> case op of
+  case lhsResult /\ rhsResult of
+    IntLit lval /\ IntLit rval -> case op of
       AddOp -> pure $ IntLit $ lval + rval
       SubOp -> pure $ IntLit $ lval - rval
       MulOp -> pure $ IntLit $ lval * rval
@@ -46,7 +45,7 @@ evalExpr (BinExpr lhs op rhs) = do
       GEOp -> pure $ BoolLit $ lval >= rval
       LEOp -> pure $ BoolLit $ lval <= rval
       _ -> throwError "Invalid operation."
-    { lhsResult: (BoolLit lval), rhsResult: (BoolLit rval) } -> case op of
+    BoolLit lval /\ BoolLit rval -> case op of
       AndOp -> pure $ BoolLit $ lval && rval
       OrOp -> pure $ BoolLit $ lval || rval
       _ -> throwError "Invalid operation."

@@ -6,10 +6,10 @@ import Control.Alt ((<|>))
 import Control.Alternative (guard)
 import Control.Lazy (defer)
 import Data.Array (foldl, singleton)
-import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Tuple.Nested ((/\))
 import Parsing (Parser)
-import Parsing.Combinators (between, optionMaybe, try)
-import Parsing.Combinators.Array (many, many1)
+import Parsing.Combinators (optionMaybe, try)
+import Parsing.Combinators.Array (many)
 import Parsing.Language (emptyDef)
 import Parsing.String (eof)
 import Parsing.Token (TokenParser, makeTokenParser)
@@ -62,41 +62,39 @@ parseTerm =
     <|> parseBoolLit
     <|> parseVar
 
--- BinOp
---   = "+" | "-" | "*" | "/" | "%" | "**"
---   | "==" | "!=" | ">" | "<" | ">=" | "<="
---   | "&&" | "||"
-binOp :: String -> BinOp -> Prec -> Boolean -> TinyParser { op :: BinOp, opPrec :: Prec, isRightAssoc :: Boolean }
-binOp str op opPrec isRightAssoc = symbol str $> { op, opPrec, isRightAssoc }
-
 -- Expr
 --   = Term
 --   | BinExpr
 --
 -- BinExpr = Expr BinOp Expr
+--
+-- BinOp
+--   = "+" | "-" | "*" | "/" | "%" | "**"
+--   | "==" | "!=" | ">" | "<" | ">=" | "<="
+--   | "&&" | "||"
 parseExpr :: Prec -> TinyParser Expr
 parseExpr prec = do
   first <- parseTerm
   rest <- many $ try do
-    { op, opPrec, isRightAssoc } <-
-      binOp "**" PowOp ProdPrec true
-        <|> binOp "==" EqOp CompPrec false
-        <|> binOp "!=" NotEqOp CompPrec false
-        <|> binOp ">=" GEOp CompPrec false
-        <|> binOp "<=" LEOp CompPrec false
-        <|> binOp "&&" AndOp AndPrec false
-        <|> binOp "||" OrOp OrPrec false
-        <|> binOp "+" AddOp SumPrec false
-        <|> binOp "-" SubOp SumPrec false
-        <|> binOp "*" MulOp ProdPrec false
-        <|> binOp "/" DivOp ProdPrec false
-        <|> binOp "%" ModOp ProdPrec false
-        <|> binOp ">" GTOp CompPrec false
-        <|> binOp "<" LTOp CompPrec false
+    (op /\ opPrec /\ isRightAssoc) <-
+      symbol "**" $> PowOp /\ ProdPrec /\ true
+        <|> symbol "==" $> EqOp /\ CompPrec /\ false
+        <|> symbol "!=" $> NotEqOp /\ CompPrec /\ false
+        <|> symbol ">=" $> GEOp /\ CompPrec /\ false
+        <|> symbol "<=" $> LEOp /\ CompPrec /\ false
+        <|> symbol "&&" $> AndOp /\ AndPrec /\ false
+        <|> symbol "||" $> OrOp /\ OrPrec /\ false
+        <|> symbol "+" $> AddOp /\ SumPrec /\ false
+        <|> symbol "-" $> SubOp /\ SumPrec /\ false
+        <|> symbol "*" $> MulOp /\ ProdPrec /\ false
+        <|> symbol "/" $> DivOp /\ ProdPrec /\ false
+        <|> symbol "%" $> ModOp /\ ProdPrec /\ false
+        <|> symbol ">" $> GTOp /\ CompPrec /\ false
+        <|> symbol "<" $> LTOp /\ CompPrec /\ false
     guard $ opPrec > prec || isRightAssoc
     rhs <- parseExpr opPrec
-    pure { op, rhs }
-  pure $ foldl (\lhs { op, rhs } -> BinExpr lhs op rhs) first rest
+    pure (op /\ rhs)
+  pure $ foldl (\lhs (op /\ rhs) -> BinExpr lhs op rhs) first rest
 
 parseSingleExpr :: TinyParser Expr
 parseSingleExpr = parseExpr LowestPrec <* eof
@@ -108,10 +106,10 @@ parseVarStmt = VarStmt
   <*> ident
   <* symbol "="
   <*> parseExpr LowestPrec
-  <* symbol ";"
+  <* tokenParser.semi
 
 block :: TinyParser (Array Stmt)
-block = defer \_ -> between (symbol "{") (symbol "}") $ many parseStmt
+block = defer \_ -> tokenParser.braces $ many parseStmt
 
 -- IfStmt = "if" Expr "{" Stmt* "}" ( "else" ( "{" Stmt* "}" ) | IfStmt )?
 -- ... } else if ... is desugared to ... } else { if ...
@@ -120,7 +118,8 @@ parseIfStmt = defer \_ -> IfStmt
   <$ symbol "if"
   <*> parseExpr LowestPrec
   <*> block
-  <*> optionMaybe (symbol "else" *> (singleton <$> parseIfStmt <|> block))
+  <*> optionMaybe
+    (symbol "else" *> (singleton <$> parseIfStmt <|> block))
 
 -- Stmt
 --   = VarStmt
@@ -130,5 +129,7 @@ parseStmt = defer \_ ->
   parseVarStmt
     <|> parseIfStmt
 
-parseStmts :: TinyParser (NonEmptyArray Stmt)
-parseStmts = tokenParser.whiteSpace *> (many1 $ parseStmt) <* eof
+parseStmts :: TinyParser (Array Stmt)
+parseStmts = tokenParser.whiteSpace
+  *> (many parseStmt)
+  <* eof
