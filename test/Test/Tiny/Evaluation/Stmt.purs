@@ -1,0 +1,72 @@
+module Test.Tiny.Evaluation.Stmt (spec) where
+
+import Prelude
+
+import Data.Either (Either(..))
+import Data.Map (empty, singleton)
+import Data.Maybe (Maybe(..))
+import Data.Tuple.Nested ((/\))
+import Test.Spec (Spec, describe, it)
+import Test.Spec.Assertions (shouldEqual)
+import Tiny.Ast (BinOp(..), Expr(..), Stmt(..))
+import Tiny.Evaluation (evalStmt, runEvaluator)
+
+spec :: Spec Unit
+spec = describe "statement" do
+  -- var foo = 42;
+  it "variable statement" do
+    shouldEqual
+      (runEvaluator (evalStmt $ VarStmt "foo" (IntLit 42)) empty)
+      (Right $ unit /\ singleton "foo" (IntLit 42))
+
+  -- foo = 53;
+  it "assignment statement" do
+    let
+      beforeScope = singleton "foo" $ IntLit 42
+    shouldEqual
+      (runEvaluator (evalStmt $ AssignStmt "foo" (IntLit 53)) beforeScope)
+      (Right $ unit /\ singleton "foo" (IntLit 53))
+
+  -- if 20 > 10 {
+  --     var bar = 1;
+  -- }
+  it "if statement (then only)" do
+    let
+      cond = BinExpr (IntLit 20) GTOp (IntLit 10)
+      thenBody = [ VarStmt "bar" $ IntLit 1 ]
+    shouldEqual
+      (runEvaluator (evalStmt $ IfStmt cond thenBody Nothing) empty)
+      (Right $ unit /\ empty)
+
+  -- if 20 > 10 {
+  --     var bar = 1;
+  -- } else {
+  --     var bar = 2;
+  -- }
+  it "if statement (then and else)" do
+    let
+      cond = BinExpr (IntLit 20) GTOp (IntLit 10)
+      thenBody = [ VarStmt "bar" $ IntLit 1 ]
+      elseBody = [ VarStmt "bar" $ IntLit 2 ]
+    shouldEqual
+      (runEvaluator (evalStmt $ IfStmt cond thenBody $ Just elseBody) empty)
+      (Right $ unit /\ empty)
+
+  -- if 20 > 10 {
+  --     var bar = 1;
+  --  } else if 20 > 5 {
+  --     var bar = 2;
+  -- } else {
+  --     var bar = 3;
+  -- }
+  it "if statement (else if)" do
+    let
+      cond = BinExpr (IntLit 20) GTOp (IntLit 10)
+      thenBody = [ VarStmt "bar" $ IntLit 1 ]
+      elseIfCond = BinExpr (Var "foo") GTOp (IntLit 5)
+      elseIfThenBody = [ VarStmt "bar" $ IntLit 2 ]
+      elseIfElseBody = [ VarStmt "bar" $ IntLit 3 ]
+      elseBody = [ IfStmt elseIfCond elseIfThenBody $ Just elseIfElseBody ]
+    shouldEqual
+      (runEvaluator (evalStmt $ IfStmt cond thenBody $ Just elseBody) empty)
+      (Right $ unit /\ empty)

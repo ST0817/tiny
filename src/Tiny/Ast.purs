@@ -64,6 +64,7 @@ instance Show Expr where
 
 data Stmt
   = VarStmt String Expr
+  | AssignStmt String Expr
   | IfStmt Expr (Array Stmt) (Maybe (Array Stmt))
 
 derive instance Eq Stmt
@@ -78,6 +79,7 @@ instance Show Stmt where
       <> " = "
       <> show value
       <> ";"
+  show (AssignStmt name value) = name <> " = " <> show value <> ";"
   show (IfStmt cond thenBody maybeElseBody) =
     "if "
       <> show cond

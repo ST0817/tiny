@@ -107,6 +107,9 @@ parseExpr prec = do
 parseSingleExpr :: TinyParser Expr
 parseSingleExpr = parseExpr LowestPrec <* eof
 
+semi :: TinyParser String
+semi = tokenParser.semi
+
 -- VarStmt = "var" Ident ( "=" Expr )? ";"
 -- "var foo;" is desugared to "var foo = null;"
 parseVarStmt :: TinyParser Stmt
@@ -114,7 +117,15 @@ parseVarStmt = VarStmt
   <$ symbol "var"
   <*> ident
   <*> (symbol "=" *> parseExpr LowestPrec <|> pure NullLit)
-  <* tokenParser.semi
+  <* semi
+
+-- AssignStmt = Ident "=" Expr ";"
+parseAssignStmt :: TinyParser Stmt
+parseAssignStmt = AssignStmt
+  <$> ident
+  <* symbol "="
+  <*> parseExpr LowestPrec
+  <* semi
 
 block :: TinyParser (Array Stmt)
 block = defer \_ -> tokenParser.braces $ many parseStmt
@@ -131,10 +142,12 @@ parseIfStmt = defer \_ -> IfStmt
 
 -- Stmt
 --   = VarStmt
+--   | AssignStmt
 --   | IfStmt
 parseStmt :: TinyParser Stmt
 parseStmt = defer \_ ->
-  parseVarStmt
+  try parseVarStmt
+    <|> try parseAssignStmt
     <|> parseIfStmt
 
 parseStmts :: TinyParser (Array Stmt)

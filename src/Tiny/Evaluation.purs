@@ -19,15 +19,18 @@ type Evaluator = StateT Scope (Except String)
 runEvaluator :: forall a. Evaluator a -> Scope -> Either String (a /\ Scope)
 runEvaluator evaluator scope = runExcept $ runStateT evaluator scope
 
-evalExpr :: Expr -> Evaluator Expr
-evalExpr intLit@(IntLit _) = pure intLit
-evalExpr boolLit@(BoolLit _) = pure boolLit
-evalExpr nullLit@NullLit = pure nullLit
-evalExpr (Var name) = do
+lookupVar :: String -> Evaluator Expr
+lookupVar name = do
   scope <- get
   case lookup name scope of
     Just value -> pure value
     Nothing -> throwError $ "Undefined variable: " <> name
+
+evalExpr :: Expr -> Evaluator Expr
+evalExpr intLit@(IntLit _) = pure intLit
+evalExpr boolLit@(BoolLit _) = pure boolLit
+evalExpr nullLit@NullLit = pure nullLit
+evalExpr (Var name) = lookupVar name
 evalExpr (BinExpr lhs op rhs) = do
   lhsResult <- evalExpr lhs
   rhsResult <- evalExpr rhs
@@ -65,6 +68,8 @@ evalStmt (VarStmt name value) = do
   case lookup name scope of
     Nothing -> modify_ $ insert name value
     Just _ -> throwError $ "Redefined variable: " <> name
+evalStmt (AssignStmt name value) =
+  lookupVar name *> modify_ (insert name value)
 evalStmt (IfStmt cond thenBody maybeElseBody) = do
   condResult <- evalExpr cond
   case condResult /\ maybeElseBody of
