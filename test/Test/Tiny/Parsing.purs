@@ -106,6 +106,14 @@ spec = describe "parsing" do
         (runParser "42 || 53" parseSingleExpr)
         (Right $ BinExpr (IntLit 42) OrOp (IntLit 53))
 
+    it "parenthesized expression" do
+      let
+        lhs = BinExpr (IntLit 42) AddOp (IntLit 13)
+        rhs = IntLit 53
+      shouldEqual
+        (runParser "(42 + 13) * 53" parseSingleExpr)
+        (Right $ BinExpr lhs MulOp rhs)
+
   describe "statement" do
     it "variable statement" do
       shouldEqual

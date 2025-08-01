@@ -61,12 +61,14 @@ parseNullLit = NullLit <$ symbol "null"
 --   | BoolLit
 --   | NullLit
 --   | Var
+--   | "(" Expr ")"
 parseTerm :: TinyParser Expr
-parseTerm =
+parseTerm = defer \_ ->
   parseIntLit
     <|> parseBoolLit
     <|> parseNullLit
     <|> parseVar
+    <|> tokenParser.parens (parseExpr LowestPrec)
 
 -- Expr
 --   = Term
