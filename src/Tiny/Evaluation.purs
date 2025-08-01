@@ -22,6 +22,7 @@ runEvaluator evaluator scope = runExcept $ runStateT evaluator scope
 evalExpr :: Expr -> Evaluator Expr
 evalExpr intLit@(IntLit _) = pure intLit
 evalExpr boolLit@(BoolLit _) = pure boolLit
+evalExpr nullLit@NullLit = pure nullLit
 evalExpr (Var name) = do
   scope <- get
   case lookup name scope of

@@ -30,6 +30,12 @@ spec = describe "evaluation" do
         (runEvaluator (evalExpr $ BoolLit false) empty)
         (Right $ BoolLit false /\ empty)
 
+    it "null literal" do
+      -- foo
+      shouldEqual
+        (runEvaluator (evalExpr NullLit) empty)
+        (Right $ NullLit /\ empty)
+
     it "variable" do
       -- foo
       -- -> 42

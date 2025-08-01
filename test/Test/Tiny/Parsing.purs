@@ -26,6 +26,11 @@ spec = describe "parsing" do
         (runParser "false" parseSingleExpr)
         (Right $ BoolLit false)
 
+    it "null literal" do
+      shouldEqual
+        (runParser "null" parseSingleExpr)
+        (Right NullLit)
+
     it "variable" do
       shouldEqual
         (runParser "foo" parseSingleExpr)
@@ -106,6 +111,11 @@ spec = describe "parsing" do
       shouldEqual
         (runParser "var foo = 42;" parseStmts)
         (Right [ VarStmt "foo" $ IntLit 42 ])
+
+    it "variable statement (default value)" do
+      shouldEqual
+        (runParser "var foo;" parseStmts)
+        (Right [ VarStmt "foo" NullLit ])
 
     it "if statement (then only)" do
       let

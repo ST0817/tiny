@@ -52,14 +52,20 @@ parseBoolLit =
 parseVar :: TinyParser Expr
 parseVar = Var <$> ident
 
+-- NullLit = "null"
+parseNullLit :: TinyParser Expr
+parseNullLit = NullLit <$ symbol "null"
+
 -- Term
 --   = IntLit
 --   | BoolLit
+--   | NullLit
 --   | Var
 parseTerm :: TinyParser Expr
 parseTerm =
   parseIntLit
     <|> parseBoolLit
+    <|> parseNullLit
     <|> parseVar
 
 -- Expr
@@ -99,20 +105,20 @@ parseExpr prec = do
 parseSingleExpr :: TinyParser Expr
 parseSingleExpr = parseExpr LowestPrec <* eof
 
--- VarStmt = "var" Ident "=" Expr ";"
+-- VarStmt = "var" Ident ( "=" Expr )? ";"
+-- "var foo;" is desugared to "var foo = null;"
 parseVarStmt :: TinyParser Stmt
 parseVarStmt = VarStmt
   <$ symbol "var"
   <*> ident
-  <* symbol "="
-  <*> parseExpr LowestPrec
+  <*> (symbol "=" *> parseExpr LowestPrec <|> pure NullLit)
   <* tokenParser.semi
 
 block :: TinyParser (Array Stmt)
 block = defer \_ -> tokenParser.braces $ many parseStmt
 
 -- IfStmt = "if" Expr "{" Stmt* "}" ( "else" ( "{" Stmt* "}" ) | IfStmt )?
--- ... } else if ... is desugared to ... } else { if ...
+-- "... } else if ..." is desugared to "... } else { if ..."
 parseIfStmt :: TinyParser Stmt
 parseIfStmt = defer \_ -> IfStmt
   <$ symbol "if"

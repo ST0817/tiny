@@ -42,6 +42,7 @@ instance Show BinOp where
 data Expr
   = IntLit Int
   | BoolLit Boolean
+  | NullLit
   | Var String
   | BinExpr Expr BinOp Expr
 
@@ -50,6 +51,7 @@ derive instance Eq Expr
 instance Show Expr where
   show (IntLit value) = show value
   show (BoolLit value) = show value
+  show NullLit = "null"
   show (Var name) = name
   show (BinExpr lhs op rhs) =
     "("
