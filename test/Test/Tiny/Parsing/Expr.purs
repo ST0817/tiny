@@ -39,6 +39,24 @@ spec = describe "expression" do
       (runParser "foo" parseSingleExpr)
       (Right $ Var "foo")
 
+  it "parenthesized expression" do
+    let
+      lhs = TupleExpr [ BinExpr (IntLit 42) AddOp (IntLit 13) ]
+      rhs = IntLit 53
+    shouldEqual
+      (runParser "(42 + 13) * 53" parseSingleExpr)
+      (Right $ BinExpr lhs MulOp rhs)
+
+  it "tuple" do
+    shouldEqual
+      (runParser "(42, true)" parseSingleExpr)
+      (Right $ TupleExpr [ IntLit 42, BoolLit true ])
+
+  it "unit" do
+    shouldEqual
+      (runParser "()" parseSingleExpr)
+      (Right $ TupleExpr [])
+
   it "addition" do
     shouldEqual
       (runParser "42 + 53" parseSingleExpr)
@@ -113,11 +131,3 @@ spec = describe "expression" do
     shouldEqual
       (runParser "42 || 53" parseSingleExpr)
       (Right $ BinExpr (IntLit 42) OrOp (IntLit 53))
-
-  it "parenthesized expression" do
-    let
-      lhs = BinExpr (IntLit 42) AddOp (IntLit 13)
-      rhs = IntLit 53
-    shouldEqual
-      (runParser "(42 + 13) * 53" parseSingleExpr)
-      (Right $ BinExpr lhs MulOp rhs)

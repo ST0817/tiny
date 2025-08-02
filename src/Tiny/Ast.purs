@@ -2,6 +2,7 @@ module Tiny.Ast (BinOp(..), Expr(..), Stmt(..)) where
 
 import Prelude
 
+import Data.Array (intercalate)
 import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
 
@@ -45,6 +46,7 @@ data Expr
   | BoolLit Boolean
   | NullLit
   | Var String
+  | TupleExpr (Array Expr)
   | BinExpr Expr BinOp Expr
 
 derive instance Eq Expr
@@ -55,14 +57,10 @@ instance Show Expr where
   show (BoolLit value) = show value
   show NullLit = "null"
   show (Var name) = name
+  show (TupleExpr elems) =
+    "(" <> intercalate ", " (show <$> elems) <> ")"
   show (BinExpr lhs op rhs) =
-    "("
-      <> show lhs
-      <> " "
-      <> show op
-      <> " "
-      <> show rhs
-      <> ")"
+    "(" <> show lhs <> " " <> show op <> " " <> show rhs <> ")"
 
 data Stmt
   = VarStmt String Expr

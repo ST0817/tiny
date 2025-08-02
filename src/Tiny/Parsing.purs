@@ -5,7 +5,7 @@ import Prelude hiding (between)
 import Control.Alt ((<|>))
 import Control.Alternative (guard)
 import Control.Lazy (defer)
-import Data.Array (foldl, singleton)
+import Data.Array (foldl, fromFoldable, singleton)
 import Data.Tuple.Nested ((/\))
 import Parsing (Parser)
 import Parsing.Combinators (optionMaybe, try)
@@ -38,6 +38,9 @@ symbol = tokenParser.symbol
 ident :: TinyParser String
 ident = tokenParser.identifier
 
+parens :: forall a. TinyParser a -> TinyParser a
+parens = tokenParser.parens
+
 -- FloatLit = [0-9]+( "." [0-9]+ )?
 parseFloatLit :: TinyParser Expr
 parseFloatLit = FloatLit <$> tokenParser.float
@@ -52,13 +55,22 @@ parseBoolLit =
   symbol "true" $> BoolLit true
     <|> symbol "false" $> BoolLit false
 
+-- NullLit = "null"
+parseNullLit :: TinyParser Expr
+parseNullLit = NullLit <$ symbol "null"
+
 -- Var = Ident
 parseVar :: TinyParser Expr
 parseVar = Var <$> ident
 
--- NullLit = "null"
-parseNullLit :: TinyParser Expr
-parseNullLit = NullLit <$ symbol "null"
+-- TupleExpr = "(" Expr ( "," Expr )* ")"
+--
+-- Parenthesized expressions are parsed as tuples with a single element.
+-- The element is evaluated as a single expression during evaluation.
+parseTupleExpr :: TinyParser Expr
+parseTupleExpr = defer \_ ->
+  TupleExpr <$> parens
+    (fromFoldable <$> (tokenParser.commaSep $ parseExpr LowestPrec))
 
 -- Term
 --   = FloatLit
@@ -66,7 +78,7 @@ parseNullLit = NullLit <$ symbol "null"
 --   | BoolLit
 --   | NullLit
 --   | Var
---   | "(" Expr ")"
+--   | TupleExpr
 parseTerm :: TinyParser Expr
 parseTerm = defer \_ ->
   try parseFloatLit
@@ -74,7 +86,7 @@ parseTerm = defer \_ ->
     <|> try parseBoolLit
     <|> try parseNullLit
     <|> try parseVar
-    <|> tokenParser.parens (parseExpr LowestPrec)
+    <|> parseTupleExpr
 
 -- Expr
 --   = Term
@@ -137,7 +149,8 @@ block :: TinyParser (Array Stmt)
 block = defer \_ -> tokenParser.braces $ many parseStmt
 
 -- IfStmt = "if" Expr "{" Stmt* "}" ( "else" ( "{" Stmt* "}" ) | IfStmt )?
--- "... } else if ..." is desugared to "... } else { if ..."
+--
+-- "... } else if ..." is desugared to "... } else { if ...".
 parseIfStmt :: TinyParser Stmt
 parseIfStmt = defer \_ -> IfStmt
   <$ symbol "if"

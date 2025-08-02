@@ -10,6 +10,7 @@ import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
 import Tiny.Ast (BinOp(..), Expr(..), Stmt(..))
 import Tiny.Evaluation (empty, evalStmt, runEvaluator, singleton)
+import Tiny.Object (Object(..))
 
 spec :: Spec Unit
 spec = describe "statement" do
@@ -17,15 +18,15 @@ spec = describe "statement" do
   it "variable statement" do
     shouldEqual
       (runEvaluator (evalStmt $ VarStmt "foo" (IntLit 42)) empty)
-      (Right $ unit /\ singleton "foo" (IntLit 42))
+      (Right $ unit /\ singleton "foo" (IntObj 42))
 
   -- foo = 53;
   it "assignment statement" do
     let
-      beforeScope = singleton "foo" $ IntLit 42
+      beforeScope = singleton "foo" $ IntObj 42
     shouldEqual
       (runEvaluator (evalStmt $ AssignStmt "foo" (IntLit 53)) beforeScope)
-      (Right $ unit /\ singleton "foo" (IntLit 53))
+      (Right $ unit /\ singleton "foo" (IntObj 53))
 
   -- if 20 > 10 {
   --     var bar = 1;
@@ -82,7 +83,7 @@ spec = describe "statement" do
       thenBody = [ AssignStmt "bar" $ IntLit 1 ]
       ifStmt = IfStmt cond thenBody Nothing
       stmts = [ barDef, ifStmt ]
-      afterScope = singleton "bar" $ IntLit 1
+      afterScope = singleton "bar" $ IntObj 1
     shouldEqual
       (runEvaluator (traverse_ evalStmt stmts) empty)
       (Right $ unit /\ afterScope)
