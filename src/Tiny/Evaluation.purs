@@ -16,10 +16,11 @@ import Control.Monad.State (StateT, get, modify_, runStateT)
 import Data.Either (Either)
 import Data.Foldable (traverse_)
 import Data.Generic.Rep (class Generic)
-import Data.Int (pow)
+import Data.Int as Int
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Number as Number
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\), type (/\))
 import Tiny.Ast (BinOp(..), Expr(..), Stmt(..))
@@ -75,6 +76,7 @@ getVar name = do
     Nothing -> throwError $ "Undefined variable: " <> name
 
 evalExpr :: Expr -> Evaluator Expr
+evalExpr floatLit@(FloatLit _) = pure floatLit
 evalExpr intLit@(IntLit _) = pure intLit
 evalExpr boolLit@(BoolLit _) = pure boolLit
 evalExpr nullLit@NullLit = pure nullLit
@@ -82,14 +84,14 @@ evalExpr (Var name) = getVar name
 evalExpr (BinExpr lhs op rhs) = do
   lhsResult <- evalExpr lhs
   rhsResult <- evalExpr rhs
-  case lhsResult /\ rhsResult of
-    IntLit lval /\ IntLit rval -> case op of
-      AddOp -> pure $ IntLit $ lval + rval
-      SubOp -> pure $ IntLit $ lval - rval
-      MulOp -> pure $ IntLit $ lval * rval
-      DivOp -> pure $ IntLit $ lval / rval
-      ModOp -> pure $ IntLit $ lval `mod` rval
-      PowOp -> pure $ IntLit $ lval `pow` rval
+  case lhsResult, rhsResult of
+    FloatLit lval, FloatLit rval -> case op of
+      AddOp -> pure $ FloatLit $ lval + rval
+      SubOp -> pure $ FloatLit $ lval - rval
+      MulOp -> pure $ FloatLit $ lval * rval
+      DivOp -> pure $ FloatLit $ lval / rval
+      ModOp -> pure $ FloatLit $ lval `mod` rval
+      PowOp -> pure $ FloatLit $ lval `Number.pow` rval
       EqOp -> pure $ BoolLit $ lval == rval
       NotEqOp -> pure $ BoolLit $ lval /= rval
       GTOp -> pure $ BoolLit $ lval > rval
@@ -97,11 +99,25 @@ evalExpr (BinExpr lhs op rhs) = do
       GEOp -> pure $ BoolLit $ lval >= rval
       LEOp -> pure $ BoolLit $ lval <= rval
       _ -> throwError "Invalid operation."
-    BoolLit lval /\ BoolLit rval -> case op of
+    IntLit lval, IntLit rval -> case op of
+      AddOp -> pure $ IntLit $ lval + rval
+      SubOp -> pure $ IntLit $ lval - rval
+      MulOp -> pure $ IntLit $ lval * rval
+      DivOp -> pure $ IntLit $ lval / rval
+      ModOp -> pure $ IntLit $ lval `mod` rval
+      PowOp -> pure $ IntLit $ lval `Int.pow` rval
+      EqOp -> pure $ BoolLit $ lval == rval
+      NotEqOp -> pure $ BoolLit $ lval /= rval
+      GTOp -> pure $ BoolLit $ lval > rval
+      LTOp -> pure $ BoolLit $ lval < rval
+      GEOp -> pure $ BoolLit $ lval >= rval
+      LEOp -> pure $ BoolLit $ lval <= rval
+      _ -> throwError "Invalid operation."
+    BoolLit lval, BoolLit rval -> case op of
       AndOp -> pure $ BoolLit $ lval && rval
       OrOp -> pure $ BoolLit $ lval || rval
       _ -> throwError "Invalid operation."
-    _ -> throwError "Invalid operation."
+    _, _ -> throwError "Invalid operation."
 
 evalBlock :: Array Stmt -> Evaluator Unit
 evalBlock body = do

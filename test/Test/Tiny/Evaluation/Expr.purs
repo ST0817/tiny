@@ -11,6 +11,12 @@ import Tiny.Evaluation (empty, evalExpr, runEvaluator, singleton)
 
 spec :: Spec Unit
 spec = describe "expression" do
+  it "floating point number literal" do
+    -- 42.195
+    shouldEqual
+      (runEvaluator (evalExpr $ FloatLit 42.195) empty)
+      (Right $ FloatLit 42.195 /\ empty)
+
   it "integer literal" do
     -- 42
     shouldEqual
@@ -76,12 +82,19 @@ spec = describe "expression" do
       (runEvaluator (evalExpr $ BinExpr (IntLit 42) ModOp (IntLit 13)) empty)
       (Right $ IntLit 3 /\ empty)
 
-  it "power" do
+  it "power (integer)" do
     -- 4 ** 3
     -- -> 64
     shouldEqual
       (runEvaluator (evalExpr $ BinExpr (IntLit 4) PowOp (IntLit 3)) empty)
       (Right $ IntLit 64 /\ empty)
+
+  it "power (floating point number)" do
+    -- 36.0 ** 0.5
+    -- -> 6.0
+    shouldEqual
+      (runEvaluator (evalExpr $ BinExpr (FloatLit 36.0) PowOp (FloatLit 0.5)) empty)
+      (Right $ FloatLit 6.0 /\ empty)
 
   it "equal" do
     -- 42 == 42

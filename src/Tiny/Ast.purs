@@ -40,7 +40,8 @@ instance Show BinOp where
   show OrOp = "||"
 
 data Expr
-  = IntLit Int
+  = FloatLit Number
+  | IntLit Int
   | BoolLit Boolean
   | NullLit
   | Var String
@@ -49,6 +50,7 @@ data Expr
 derive instance Eq Expr
 
 instance Show Expr where
+  show (FloatLit value) = show value
   show (IntLit value) = show value
   show (BoolLit value) = show value
   show NullLit = "null"

@@ -38,6 +38,10 @@ symbol = tokenParser.symbol
 ident :: TinyParser String
 ident = tokenParser.identifier
 
+-- FloatLit = [0-9]+( "." [0-9]+ )?
+parseFloatLit :: TinyParser Expr
+parseFloatLit = FloatLit <$> tokenParser.float
+
 -- IntLit = [0-9]+
 parseIntLit :: TinyParser Expr
 parseIntLit = IntLit <$> tokenParser.integer
@@ -57,17 +61,19 @@ parseNullLit :: TinyParser Expr
 parseNullLit = NullLit <$ symbol "null"
 
 -- Term
---   = IntLit
+--   = FloatLit
+--   | IntLit
 --   | BoolLit
 --   | NullLit
 --   | Var
 --   | "(" Expr ")"
 parseTerm :: TinyParser Expr
 parseTerm = defer \_ ->
-  parseIntLit
-    <|> parseBoolLit
-    <|> parseNullLit
-    <|> parseVar
+  try parseFloatLit
+    <|> try parseIntLit
+    <|> try parseBoolLit
+    <|> try parseNullLit
+    <|> try parseVar
     <|> tokenParser.parens (parseExpr LowestPrec)
 
 -- Expr

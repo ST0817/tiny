@@ -11,6 +11,11 @@ import Tiny.Parsing (parseSingleExpr)
 
 spec :: Spec Unit
 spec = describe "expression" do
+  it "floating point number literal" do
+    shouldEqual
+      (runParser "42.195" parseSingleExpr)
+      (Right (FloatLit 42.195))
+
   it "integer literal" do
     shouldEqual
       (runParser "42" parseSingleExpr)
@@ -59,10 +64,15 @@ spec = describe "expression" do
       (runParser "42 % 53" parseSingleExpr)
       (Right $ BinExpr (IntLit 42) ModOp (IntLit 53))
 
-  it "power" do
+  it "power (integer)" do
     shouldEqual
       (runParser "42 ** 53" parseSingleExpr)
       (Right $ BinExpr (IntLit 42) PowOp (IntLit 53))
+
+  it "power (floating point number)" do
+    shouldEqual
+      (runParser "36.0 ** 0.5" parseSingleExpr)
+      (Right $ BinExpr (FloatLit 36.0) PowOp (FloatLit 0.5))
 
   it "equal" do
     shouldEqual
