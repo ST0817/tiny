@@ -9,7 +9,7 @@ import Data.Tuple.Nested ((/\))
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
 import Tiny.Ast (BinOp(..), Expr(..), Pattern(..), Stmt(..))
-import Tiny.Evaluation (empty, evalStmt, runEvaluator, singleton)
+import Tiny.Evaluation (empty, evalStmt, fromArray, runEvaluator, singleton)
 import Tiny.Object (Object(..))
 
 spec :: Spec Unit
@@ -20,6 +20,49 @@ spec = describe "statement" do
       (runEvaluator (evalStmt $ VarStmt (VarPattern "foo") (IntLit 42)) empty)
       (Right $ unit /\ singleton "foo" (IntObj 42))
 
+  -- var (foo, bar) = (42, true);
+  it "variable statement (tuple pattern)" do
+    let
+      pattern = TuplePattern [ VarPattern "foo", VarPattern "bar" ]
+      value = TupleExpr [ IntLit 42, BoolLit true ]
+      afterScope = fromArray
+        [ "foo" /\ IntObj 42
+        , "bar" /\ BoolObj true
+        ]
+    shouldEqual
+      (runEvaluator (evalStmt $ VarStmt pattern value) empty)
+      (Right $ unit /\ afterScope)
+
+  -- var (foo, (bar, hoge)) = (42, (true, 3.14));
+  it "variable statement (nested tuple pattern)" do
+    let
+      pattern = TuplePattern
+        [ VarPattern "foo"
+        , TuplePattern [ VarPattern "bar", VarPattern "hoge" ]
+        ]
+      value = TupleExpr
+        [ IntLit 42
+        , TupleExpr [ BoolLit true, FloatLit 3.14 ]
+        ]
+      afterScope = fromArray
+        [ "foo" /\ IntObj 42
+        , "bar" /\ BoolObj true
+        , "hoge" /\ FloatObj 3.14
+        ]
+    shouldEqual
+      (runEvaluator (evalStmt $ VarStmt pattern value) empty)
+      (Right $ unit /\ afterScope)
+
+  -- var (foo) = 42;
+  it "variable statement (single element tuple pattern)" do
+    let
+      pattern = TuplePattern [ VarPattern "foo" ]
+      value = TupleExpr [ IntLit 42 ]
+      afterScope = singleton "foo" $ IntObj 42
+    shouldEqual
+      (runEvaluator (evalStmt $ VarStmt pattern value) empty)
+      (Right $ unit /\ afterScope)
+
   -- foo = 53;
   it "assignment statement" do
     let
@@ -27,6 +70,48 @@ spec = describe "statement" do
     shouldEqual
       (runEvaluator (evalStmt $ AssignStmt (VarPattern "foo") (IntLit 53)) beforeScope)
       (Right $ unit /\ singleton "foo" (IntObj 53))
+
+  -- (foo, bar) = (53, false);
+  it "assignment statement (tuple pattern)" do
+    let
+      pattern = TuplePattern [ VarPattern "foo", VarPattern "bar" ]
+      value = TupleExpr [ IntLit 53, BoolLit false ]
+      beforeScope = fromArray
+        [ "foo" /\ IntObj 42
+        , "bar" /\ BoolObj true
+        ]
+      afterScope = fromArray
+        [ "foo" /\ IntObj 53
+        , "bar" /\ BoolObj false
+        ]
+    shouldEqual
+      (runEvaluator (evalStmt $ AssignStmt pattern value) beforeScope)
+      (Right $ unit /\ afterScope)
+
+  -- (foo, (bar, hoge)) = (53, (false, 2.71));
+  it "assignment statement (nested tuple pattern)" do
+    let
+      pattern = TuplePattern
+        [ VarPattern "foo"
+        , TuplePattern [ VarPattern "bar", VarPattern "hoge" ]
+        ]
+      value = TupleExpr
+        [ IntLit 53
+        , TupleExpr [ BoolLit false, FloatLit 2.71 ]
+        ]
+      beforeScope = fromArray
+        [ "foo" /\ IntObj 42
+        , "bar" /\ BoolObj true
+        , "hoge" /\ FloatObj 3.14
+        ]
+      afterScope = fromArray
+        [ "foo" /\ IntObj 53
+        , "bar" /\ BoolObj false
+        , "hoge" /\ FloatObj 2.71
+        ]
+    shouldEqual
+      (runEvaluator (evalStmt $ AssignStmt pattern value) beforeScope)
+      (Right $ unit /\ afterScope)
 
   -- if 20 > 10 {
   --     var bar = 1;

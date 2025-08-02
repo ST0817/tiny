@@ -46,13 +46,28 @@ ident = tokenParser.identifier
 parens :: forall a. TinyParser a -> TinyParser a
 parens = tokenParser.parens
 
+commaSep :: forall a. TinyParser a -> TinyParser (Array a)
+commaSep parser = fromFoldable <$> tokenParser.commaSep parser
+
 -- VarPattern = Ident
 parseVarPattern :: TinyParser Pattern
 parseVarPattern = VarPattern <$> ident
 
--- Pattern = VarPattern
+-- TuplePattern = "(" Pattern ( "," Pattern )* ")"
+--
+-- Parenthesized patterns are parsed as tuple patterns with a single element.
+-- The element is evaluated as a single pattern during evaluation.
+parseTuplePattern :: TinyParser Pattern
+parseTuplePattern = defer \_ ->
+  TuplePattern <$> parens (commaSep parsePattern)
+
+-- Pattern
+--   = VarPattern
+--   | TuplePattern
 parsePattern :: TinyParser Pattern
-parsePattern = parseVarPattern
+parsePattern = defer \_ ->
+  try parseVarPattern
+    <|> try parseTuplePattern
 
 -- FloatLit = [0-9]+( "." [0-9]+ )?
 parseFloatLit :: TinyParser Expr
@@ -82,8 +97,7 @@ parseVar = Var <$> ident
 -- The element is evaluated as a single expression during evaluation.
 parseTupleExpr :: TinyParser Expr
 parseTupleExpr = defer \_ ->
-  TupleExpr <$> parens
-    (fromFoldable <$> (tokenParser.commaSep $ parseExpr LowestPrec))
+  TupleExpr <$> parens (commaSep $ parseExpr LowestPrec)
 
 -- Term
 --   = FloatLit
@@ -144,11 +158,19 @@ semi = tokenParser.semi
 -- VarStmt = "var" Pattern ( "=" Expr )? ";"
 -- "var foo;" is desugared to "var foo = null;"
 parseVarStmt :: TinyParser Stmt
-parseVarStmt = VarStmt
-  <$ symbol "var"
-  <*> parsePattern
-  <*> (symbol "=" *> parseExpr LowestPrec <|> pure NullLit)
-  <* semi
+parseVarStmt = do
+  _ <- symbol "var"
+  pattern <- parsePattern
+  VarStmt pattern
+    <$> value pattern
+    <* semi
+  where
+  defaultValue pattern = case pattern of
+    VarPattern _ -> NullLit
+    TuplePattern patterns -> TupleExpr $ defaultValue <$> patterns
+
+  value pattern =
+    symbol "=" *> parseExpr LowestPrec <|> pure (defaultValue pattern)
 
 -- AssignStmt = Pattern "=" Expr ";"
 parseAssignStmt :: TinyParser Stmt

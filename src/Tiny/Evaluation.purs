@@ -3,6 +3,7 @@ module Tiny.Evaluation
   , empty
   , evalExpr
   , evalStmt
+  , fromArray
   , runEvaluator
   , singleton
   ) where
@@ -13,6 +14,7 @@ import Control.Alt ((<|>))
 import Control.Lazy (defer)
 import Control.Monad.Except (Except, runExcept, throwError)
 import Control.Monad.State (StateT, get, modify_, runStateT)
+import Data.Array (length, zip)
 import Data.Either (Either)
 import Data.Foldable (traverse_)
 import Data.Generic.Rep (class Generic)
@@ -43,6 +45,10 @@ empty = Scope { vars: Map.empty, outer: Nothing }
 singleton :: String -> Object -> Scope
 singleton name object =
   Scope { vars: Map.singleton name object, outer: Nothing }
+
+fromArray :: Array (String /\ Object) -> Scope
+fromArray elems =
+  Scope { vars: Map.fromFoldable elems, outer: Nothing }
 
 lookup :: String -> Scope -> Maybe Object
 lookup name (Scope scope) =
@@ -137,19 +143,45 @@ evalBlock body = do
   modify_ leaveScope
   pure result
 
+defineVar :: String -> Expr -> Evaluator Unit
+defineVar name expr = do
+  checkUndefinedVar name
+  object <- evalExpr expr
+  modify_ $ insert name object
+
+updateVar :: String -> Expr -> Evaluator Unit
+updateVar name expr = do
+  _ <- getVar name
+  object <- evalExpr expr
+  modify_ $ update name object
+
 evalStmt :: Stmt -> Evaluator Unit
 evalStmt (VarStmt pattern expr) =
-  case pattern of
-    (VarPattern name) -> do
-      checkUndefinedVar name
-      object <- evalExpr expr
-      modify_ $ insert name object
+  case pattern, expr of
+    VarPattern name, _ -> defineVar name expr
+    TuplePattern [ elemPattern ], TupleExpr [ elemExpr ] ->
+      evalStmt $ VarStmt elemPattern elemExpr
+    TuplePattern patterns, TupleExpr elems
+      | length patterns == length elems ->
+          traverse_
+            ( \(elemPattern /\ elemExpr) ->
+                evalStmt $ VarStmt elemPattern elemExpr
+            )
+            (zip patterns elems)
+    _, _ -> throwError "Invalid variable definition."
 evalStmt (AssignStmt pattern expr) =
-  case pattern of
-    (VarPattern name) -> do
-      _ <- getVar name
-      object <- evalExpr expr
-      modify_ $ update name object
+  case pattern, expr of
+    VarPattern name, _ -> updateVar name expr
+    TuplePattern [ elemPattern ], TupleExpr [ elemExpr ] ->
+      evalStmt $ AssignStmt elemPattern elemExpr
+    TuplePattern patterns, TupleExpr elems
+      | length patterns == length elems ->
+          traverse_
+            ( \(elemPattern /\ elemExpr) ->
+                evalStmt $ AssignStmt elemPattern elemExpr
+            )
+            (zip patterns elems)
+    _, _ -> throwError "Invalid variable assignment."
 evalStmt (IfStmt cond thenBody maybeElseBody) = do
   condResult <- evalExpr cond
   case condResult /\ maybeElseBody of

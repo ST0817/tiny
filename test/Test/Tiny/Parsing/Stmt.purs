@@ -22,6 +22,25 @@ spec = describe "statement" do
       (runParser "var foo;" parseStmts)
       (Right [ VarStmt (VarPattern "foo") NullLit ])
 
+  it "variable statement (default value) (tuple pattern)" do
+    let
+      pattern = TuplePattern [ VarPattern "foo", VarPattern "bar" ]
+      value = TupleExpr [ NullLit, NullLit ]
+    shouldEqual
+      (runParser "var (foo, bar);" parseStmts)
+      (Right [ VarStmt pattern value ])
+
+  it "variable statement (default value) (nested tuple pattern)" do
+    let
+      pattern = TuplePattern
+        [ VarPattern "foo"
+        , TuplePattern [ VarPattern "bar", VarPattern "hoge" ]
+        ]
+      value = TupleExpr [ NullLit, TupleExpr [ NullLit, NullLit ] ]
+    shouldEqual
+      (runParser "var (foo, (bar, hoge));" parseStmts)
+      (Right [ VarStmt pattern value ])
+
   it "assignment statement" do
     shouldEqual
       (runParser "foo = 42;" parseStmts)

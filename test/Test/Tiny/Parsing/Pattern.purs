@@ -15,3 +15,14 @@ spec = describe "pattern" do
     shouldEqual
       (runParser "foo" parsePattern)
       (Right $ VarPattern "foo")
+
+  it "tuple pattern" do
+    shouldEqual
+      (runParser "(foo, bar)" parsePattern)
+      (Right $ TuplePattern [ VarPattern "foo", VarPattern "bar" ])
+
+  it "tuple pattern (nested)" do
+    let nested = TuplePattern [ VarPattern "bar", VarPattern "hoge" ]
+    shouldEqual
+      (runParser "(foo, (bar, hoge))" parsePattern)
+      (Right $ TuplePattern [ VarPattern "foo", nested ])

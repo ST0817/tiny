@@ -6,12 +6,16 @@ import Data.Array (intercalate)
 import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
 
-data Pattern = VarPattern String
+data Pattern
+  = VarPattern String
+  | TuplePattern (Array Pattern)
 
 derive instance Eq Pattern
 
 instance Show Pattern where
   show (VarPattern name) = name
+  show (TuplePattern patterns) =
+    "(" <> joinWith ", " (show <$> patterns) <> ")"
 
 data BinOp
   = AddOp
