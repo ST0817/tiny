@@ -157,18 +157,28 @@ spec = describe "statement" do
       (runEvaluator (evalStmt $ IfStmt cond thenBody $ Just elseBody) empty)
       (Right $ unit /\ empty)
 
-  -- var bar;
+  -- var foo;
   -- if true {
-  --     bar = 1;
+  --     var bar;
+  --     if true {
+  --         bar = 1;
+  --     }
+  --     foo = bar;
   -- }
   it "nested scope" do
     let
-      barDef = VarStmt (VarPattern "bar") NullLit
-      cond = BoolLit true
-      thenBody = [ AssignStmt (VarPattern "bar") (IntLit 1) ]
-      ifStmt = IfStmt cond thenBody Nothing
-      stmts = [ barDef, ifStmt ]
-      afterScope = singleton "bar" $ IntObj 1
+      stmts =
+        [ VarStmt (VarPattern "foo") NullLit
+        , IfStmt (BoolLit true)
+            [ VarStmt (VarPattern "bar") NullLit
+            , IfStmt (BoolLit true)
+                [ AssignStmt (VarPattern "bar") (IntLit 1) ]
+                Nothing
+            , AssignStmt (VarPattern "foo") (Var "bar")
+            ]
+            Nothing
+        ]
+      afterScope = singleton "foo" $ IntObj 1
     shouldEqual
       (runEvaluator (traverse_ evalStmt stmts) empty)
       (Right $ unit /\ afterScope)

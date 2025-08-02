@@ -13,7 +13,7 @@ import Prelude
 import Control.Alt ((<|>))
 import Control.Lazy (defer)
 import Control.Monad.Except (Except, runExcept, throwError)
-import Control.Monad.State (StateT, get, modify_, runStateT)
+import Control.Monad.State (StateT, get, modify_, put, runStateT)
 import Data.Array (length, zip)
 import Data.Either (Either)
 import Data.Foldable (traverse_)
@@ -21,7 +21,7 @@ import Data.Generic.Rep (class Generic)
 import Data.Int as Int
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..))
 import Data.Number as Number
 import Data.Show.Generic (genericShow)
 import Data.Traversable (traverse)
@@ -29,10 +29,7 @@ import Data.Tuple.Nested ((/\), type (/\))
 import Tiny.Ast (BinOp(..), Expr(..), Pattern(..), Stmt(..))
 import Tiny.Object (Object(..))
 
-newtype Scope = Scope
-  { vars :: Map String Object
-  , outer :: Maybe Scope
-  }
+data Scope = Scope (Map String Object) (Maybe Scope)
 
 derive instance Eq Scope
 derive instance Generic Scope _
@@ -40,36 +37,29 @@ instance Show Scope where
   show = defer \_ -> genericShow
 
 empty :: Scope
-empty = Scope { vars: Map.empty, outer: Nothing }
+empty = Scope Map.empty Nothing
 
 singleton :: String -> Object -> Scope
-singleton name object =
-  Scope { vars: Map.singleton name object, outer: Nothing }
+singleton name object = Scope (Map.singleton name object) Nothing
 
 fromArray :: Array (String /\ Object) -> Scope
-fromArray elems =
-  Scope { vars: Map.fromFoldable elems, outer: Nothing }
+fromArray elems = Scope (Map.fromFoldable elems) Nothing
 
 lookup :: String -> Scope -> Maybe Object
-lookup name (Scope scope) =
-  (Map.lookup name scope.vars) <|> (lookup name =<< scope.outer)
+lookup name (Scope vars maybeOuter) =
+  (Map.lookup name vars) <|> (lookup name =<< maybeOuter)
 
 insert :: String -> Object -> Scope -> Scope
-insert name object (Scope scope) =
-  Scope $ scope { vars = Map.insert name object scope.vars }
+insert name object (Scope vars maybeOuter) =
+  Scope (Map.insert name object vars) maybeOuter
 
 update :: String -> Object -> Scope -> Scope
-update name object (Scope scope) =
-  fromMaybe
-    (Scope $ scope { vars = Map.update (\_ -> Just object) name scope.vars })
-    (update name object <$> scope.outer)
-
-enterScope :: Scope -> Scope
-enterScope outer = Scope $ { vars: Map.empty, outer: Just outer }
-
-leaveScope :: Scope -> Scope
-leaveScope (Scope { outer: Just outer }) = outer
-leaveScope scope = scope
+update name object scope@(Scope vars maybeOuter) =
+  if Map.member name vars then
+    insert name object scope
+  else case maybeOuter of
+    Just outer -> Scope vars $ Just $ update name object outer
+    Nothing -> insert name object scope
 
 type Evaluator = StateT Scope (Except String)
 
@@ -138,9 +128,12 @@ evalExpr (BinExpr lhs op rhs) = do
 
 evalBlock :: Array Stmt -> Evaluator Unit
 evalBlock body = do
-  modify_ enterScope
+  modify_ $ Scope Map.empty <<< Just
   result <- traverse_ evalStmt body
-  modify_ leaveScope
+  Scope _ maybeOuter <- get
+  case maybeOuter of
+    Just outer -> put outer
+    Nothing -> pure unit
   pure result
 
 defineVar :: String -> Expr -> Evaluator Unit
