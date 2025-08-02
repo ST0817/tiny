@@ -8,7 +8,7 @@ import Data.Maybe (Maybe(..))
 import Data.Tuple.Nested ((/\))
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
-import Tiny.Ast (BinOp(..), Expr(..), Stmt(..))
+import Tiny.Ast (BinOp(..), Expr(..), Pattern(..), Stmt(..))
 import Tiny.Evaluation (empty, evalStmt, runEvaluator, singleton)
 import Tiny.Object (Object(..))
 
@@ -17,7 +17,7 @@ spec = describe "statement" do
   -- var foo = 42;
   it "variable statement" do
     shouldEqual
-      (runEvaluator (evalStmt $ VarStmt "foo" (IntLit 42)) empty)
+      (runEvaluator (evalStmt $ VarStmt (VarPattern "foo") (IntLit 42)) empty)
       (Right $ unit /\ singleton "foo" (IntObj 42))
 
   -- foo = 53;
@@ -25,7 +25,7 @@ spec = describe "statement" do
     let
       beforeScope = singleton "foo" $ IntObj 42
     shouldEqual
-      (runEvaluator (evalStmt $ AssignStmt "foo" (IntLit 53)) beforeScope)
+      (runEvaluator (evalStmt $ AssignStmt (VarPattern "foo") (IntLit 53)) beforeScope)
       (Right $ unit /\ singleton "foo" (IntObj 53))
 
   -- if 20 > 10 {
@@ -34,7 +34,7 @@ spec = describe "statement" do
   it "if statement (then only)" do
     let
       cond = BinExpr (IntLit 20) GTOp (IntLit 10)
-      thenBody = [ VarStmt "bar" $ IntLit 1 ]
+      thenBody = [ VarStmt (VarPattern "bar") (IntLit 1) ]
     shouldEqual
       (runEvaluator (evalStmt $ IfStmt cond thenBody Nothing) empty)
       (Right $ unit /\ empty)
@@ -47,8 +47,8 @@ spec = describe "statement" do
   it "if statement (then and else)" do
     let
       cond = BinExpr (IntLit 20) GTOp (IntLit 10)
-      thenBody = [ VarStmt "bar" $ IntLit 1 ]
-      elseBody = [ VarStmt "bar" $ IntLit 2 ]
+      thenBody = [ VarStmt (VarPattern "bar") (IntLit 1) ]
+      elseBody = [ VarStmt (VarPattern "bar") (IntLit 2) ]
     shouldEqual
       (runEvaluator (evalStmt $ IfStmt cond thenBody $ Just elseBody) empty)
       (Right $ unit /\ empty)
@@ -63,10 +63,10 @@ spec = describe "statement" do
   it "if statement (else if)" do
     let
       cond = BinExpr (IntLit 20) GTOp (IntLit 10)
-      thenBody = [ VarStmt "bar" $ IntLit 1 ]
+      thenBody = [ VarStmt (VarPattern "bar") (IntLit 1) ]
       elseIfCond = BinExpr (Var "foo") GTOp (IntLit 5)
-      elseIfThenBody = [ VarStmt "bar" $ IntLit 2 ]
-      elseIfElseBody = [ VarStmt "bar" $ IntLit 3 ]
+      elseIfThenBody = [ VarStmt (VarPattern "bar") (IntLit 2) ]
+      elseIfElseBody = [ VarStmt (VarPattern "bar") (IntLit 3) ]
       elseBody = [ IfStmt elseIfCond elseIfThenBody $ Just elseIfElseBody ]
     shouldEqual
       (runEvaluator (evalStmt $ IfStmt cond thenBody $ Just elseBody) empty)
@@ -78,9 +78,9 @@ spec = describe "statement" do
   -- }
   it "nested scope" do
     let
-      barDef = VarStmt "bar" NullLit
+      barDef = VarStmt (VarPattern "bar") NullLit
       cond = BoolLit true
-      thenBody = [ AssignStmt "bar" $ IntLit 1 ]
+      thenBody = [ AssignStmt (VarPattern "bar") (IntLit 1) ]
       ifStmt = IfStmt cond thenBody Nothing
       stmts = [ barDef, ifStmt ]
       afterScope = singleton "bar" $ IntObj 1

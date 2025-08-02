@@ -24,7 +24,7 @@ import Data.Number as Number
 import Data.Show.Generic (genericShow)
 import Data.Traversable (traverse)
 import Data.Tuple.Nested ((/\), type (/\))
-import Tiny.Ast (BinOp(..), Expr(..), Stmt(..))
+import Tiny.Ast (BinOp(..), Expr(..), Pattern(..), Stmt(..))
 import Tiny.Object (Object(..))
 
 newtype Scope = Scope
@@ -76,6 +76,13 @@ getVar name = do
   case lookup name scope of
     Just object -> pure object
     Nothing -> throwError $ "Undefined variable: " <> name
+
+checkUndefinedVar :: String -> Evaluator Unit
+checkUndefinedVar name = do
+  scope <- get
+  case lookup name scope of
+    Nothing -> pure unit
+    Just _ -> throwError $ "Redefined variable: " <> name
 
 evalExpr :: Expr -> Evaluator Object
 evalExpr (FloatLit value) = pure $ FloatObj value
@@ -131,17 +138,18 @@ evalBlock body = do
   pure result
 
 evalStmt :: Stmt -> Evaluator Unit
-evalStmt (VarStmt name value) = do
-  scope <- get
-  case lookup name scope of
-    Nothing -> do
-      object <- evalExpr value
+evalStmt (VarStmt pattern expr) =
+  case pattern of
+    (VarPattern name) -> do
+      checkUndefinedVar name
+      object <- evalExpr expr
       modify_ $ insert name object
-    Just _ -> throwError $ "Redefined variable: " <> name
-evalStmt (AssignStmt name value) = do
-  _ <- getVar name
-  object <- evalExpr value
-  modify_ (update name object)
+evalStmt (AssignStmt pattern expr) =
+  case pattern of
+    (VarPattern name) -> do
+      _ <- getVar name
+      object <- evalExpr expr
+      modify_ $ update name object
 evalStmt (IfStmt cond thenBody maybeElseBody) = do
   condResult <- evalExpr cond
   case condResult /\ maybeElseBody of

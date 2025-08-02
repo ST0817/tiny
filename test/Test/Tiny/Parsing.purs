@@ -4,9 +4,11 @@ import Prelude
 
 import Test.Spec (Spec, describe)
 import Test.Tiny.Parsing.Expr as Expr
+import Test.Tiny.Parsing.Pattern as Pattern
 import Test.Tiny.Parsing.Stmt as Stmt
 
 spec :: Spec Unit
 spec = describe "parsing" do
   Expr.spec
   Stmt.spec
+  Pattern.spec

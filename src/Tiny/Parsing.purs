@@ -1,4 +1,9 @@
-module Tiny.Parsing (parseSingleExpr, parseStmt, parseStmts) where
+module Tiny.Parsing
+  ( parsePattern
+  , parseSingleExpr
+  , parseStmt
+  , parseStmts
+  ) where
 
 import Prelude hiding (between)
 
@@ -13,7 +18,7 @@ import Parsing.Combinators.Array (many)
 import Parsing.Language (emptyDef)
 import Parsing.String (eof)
 import Parsing.Token (TokenParser, makeTokenParser)
-import Tiny.Ast (BinOp(..), Expr(..), Stmt(..))
+import Tiny.Ast (BinOp(..), Expr(..), Pattern(..), Stmt(..))
 
 data Prec
   = LowestPrec
@@ -40,6 +45,14 @@ ident = tokenParser.identifier
 
 parens :: forall a. TinyParser a -> TinyParser a
 parens = tokenParser.parens
+
+-- VarPattern = Ident
+parseVarPattern :: TinyParser Pattern
+parseVarPattern = VarPattern <$> ident
+
+-- Pattern = VarPattern
+parsePattern :: TinyParser Pattern
+parsePattern = parseVarPattern
 
 -- FloatLit = [0-9]+( "." [0-9]+ )?
 parseFloatLit :: TinyParser Expr
@@ -128,19 +141,19 @@ parseSingleExpr = parseExpr LowestPrec <* eof
 semi :: TinyParser String
 semi = tokenParser.semi
 
--- VarStmt = "var" Ident ( "=" Expr )? ";"
+-- VarStmt = "var" Pattern ( "=" Expr )? ";"
 -- "var foo;" is desugared to "var foo = null;"
 parseVarStmt :: TinyParser Stmt
 parseVarStmt = VarStmt
   <$ symbol "var"
-  <*> ident
+  <*> parsePattern
   <*> (symbol "=" *> parseExpr LowestPrec <|> pure NullLit)
   <* semi
 
--- AssignStmt = Ident "=" Expr ";"
+-- AssignStmt = Pattern "=" Expr ";"
 parseAssignStmt :: TinyParser Stmt
 parseAssignStmt = AssignStmt
-  <$> ident
+  <$> parsePattern
   <* symbol "="
   <*> parseExpr LowestPrec
   <* semi

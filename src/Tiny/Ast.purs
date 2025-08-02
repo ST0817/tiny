@@ -1,10 +1,17 @@
-module Tiny.Ast (BinOp(..), Expr(..), Stmt(..)) where
+module Tiny.Ast (BinOp(..), Expr(..), Pattern(..), Stmt(..)) where
 
 import Prelude
 
 import Data.Array (intercalate)
 import Data.Maybe (Maybe(..))
 import Data.String (joinWith)
+
+data Pattern = VarPattern String
+
+derive instance Eq Pattern
+
+instance Show Pattern where
+  show (VarPattern name) = name
 
 data BinOp
   = AddOp
@@ -63,8 +70,8 @@ instance Show Expr where
     "(" <> show lhs <> " " <> show op <> " " <> show rhs <> ")"
 
 data Stmt
-  = VarStmt String Expr
-  | AssignStmt String Expr
+  = VarStmt Pattern Expr
+  | AssignStmt Pattern Expr
   | IfStmt Expr (Array Stmt) (Maybe (Array Stmt))
 
 derive instance Eq Stmt
@@ -73,17 +80,12 @@ showBlock :: Array Stmt -> String
 showBlock stmts = "{ " <> joinWith " " (show <$> stmts) <> " }"
 
 instance Show Stmt where
-  show (VarStmt name value) =
-    "var "
-      <> name
-      <> " = "
-      <> show value
-      <> ";"
-  show (AssignStmt name value) = name <> " = " <> show value <> ";"
+  show (VarStmt pattern expr) =
+    "var " <> show pattern <> " = " <> show expr <> ";"
+  show (AssignStmt pattern expr) =
+    show pattern <> " = " <> show expr <> ";"
   show (IfStmt cond thenBody maybeElseBody) =
-    "if "
-      <> show cond
-      <> " "
+    "if " <> show cond <> " "
       <> showBlock thenBody
       <> case maybeElseBody of
         Just elseBody -> " else " <> showBlock elseBody

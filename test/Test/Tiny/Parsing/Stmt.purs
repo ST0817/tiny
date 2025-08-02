@@ -7,7 +7,7 @@ import Data.Maybe (Maybe(..))
 import Parsing (runParser)
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
-import Tiny.Ast (BinOp(..), Expr(..), Stmt(..))
+import Tiny.Ast (BinOp(..), Expr(..), Pattern(..), Stmt(..))
 import Tiny.Parsing (parseStmts)
 
 spec :: Spec Unit
@@ -15,17 +15,17 @@ spec = describe "statement" do
   it "variable statement" do
     shouldEqual
       (runParser "var foo = 42;" parseStmts)
-      (Right [ VarStmt "foo" $ IntLit 42 ])
+      (Right [ VarStmt (VarPattern "foo") (IntLit 42) ])
 
   it "variable statement (default value)" do
     shouldEqual
       (runParser "var foo;" parseStmts)
-      (Right [ VarStmt "foo" NullLit ])
+      (Right [ VarStmt (VarPattern "foo") NullLit ])
 
   it "assignment statement" do
     shouldEqual
       (runParser "foo = 42;" parseStmts)
-      (Right [ AssignStmt "foo" $ IntLit 42 ])
+      (Right [ AssignStmt (VarPattern "foo") (IntLit 42) ])
 
   it "if statement (then only)" do
     let
@@ -36,7 +36,7 @@ spec = describe "statement" do
           }
           """
       cond = BinExpr (Var "foo") GTOp (IntLit 10)
-      thenBody = [ VarStmt "bar" $ IntLit 1 ]
+      thenBody = [ VarStmt (VarPattern "bar") (IntLit 1) ]
     shouldEqual
       (runParser input $ parseStmts)
       (Right [ IfStmt cond thenBody Nothing ])
@@ -52,8 +52,8 @@ spec = describe "statement" do
           }
           """
       cond = BinExpr (Var "foo") GTOp (IntLit 10)
-      thenBody = [ VarStmt "bar" $ IntLit 1 ]
-      elseBody = [ VarStmt "bar" $ IntLit 2 ]
+      thenBody = [ VarStmt (VarPattern "bar") (IntLit 1) ]
+      elseBody = [ VarStmt (VarPattern "bar") (IntLit 2) ]
     shouldEqual
       (runParser input parseStmts)
       (Right [ IfStmt cond thenBody $ Just elseBody ])
@@ -71,10 +71,10 @@ spec = describe "statement" do
           }
           """
       cond = BinExpr (Var "foo") GTOp (IntLit 10)
-      thenBody = [ VarStmt "bar" $ IntLit 1 ]
+      thenBody = [ VarStmt (VarPattern "bar") (IntLit 1) ]
       elseIfCond = BinExpr (Var "foo") GTOp (IntLit 5)
-      elseIfThenBody = [ VarStmt "bar" $ IntLit 2 ]
-      elseIfElseBody = [ VarStmt "bar" $ IntLit 3 ]
+      elseIfThenBody = [ VarStmt (VarPattern "bar") (IntLit 2) ]
+      elseIfElseBody = [ VarStmt (VarPattern "bar") (IntLit 3) ]
       elseBody = [ IfStmt elseIfCond elseIfThenBody $ Just elseIfElseBody ]
     shouldEqual
       (runParser input parseStmts)
