@@ -1,26 +1,74 @@
-module Tiny.Evaluation (evalExpr, evalStmt, runEvaluator) where
+module Tiny.Evaluation
+  ( Scope(..)
+  , empty
+  , evalExpr
+  , evalStmt
+  , runEvaluator
+  , singleton
+  ) where
 
 import Prelude
 
+import Control.Alt ((<|>))
+import Control.Lazy (defer)
 import Control.Monad.Except (Except, runExcept, throwError)
-import Control.Monad.State (StateT, get, modify_, put, runStateT)
+import Control.Monad.State (StateT, get, modify_, runStateT)
 import Data.Either (Either)
 import Data.Foldable (traverse_)
+import Data.Generic.Rep (class Generic)
 import Data.Int (pow)
-import Data.Map (Map, insert, lookup)
-import Data.Maybe (Maybe(..))
+import Data.Map (Map)
+import Data.Map as Map
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\), type (/\))
 import Tiny.Ast (BinOp(..), Expr(..), Stmt(..))
 
-type Scope = Map String Expr
+newtype Scope = Scope
+  { vars :: Map String Expr
+  , outer :: Maybe Scope
+  }
+
+derive instance Eq Scope
+derive instance Generic Scope _
+instance Show Scope where
+  show = defer \_ -> genericShow
+
+empty :: Scope
+empty = Scope { vars: Map.empty, outer: Nothing }
+
+singleton :: String -> Expr -> Scope
+singleton name value =
+  Scope { vars: Map.singleton name value, outer: Nothing }
+
+lookup :: String -> Scope -> Maybe Expr
+lookup name (Scope scope) =
+  (Map.lookup name scope.vars) <|> (lookup name =<< scope.outer)
+
+insert :: String -> Expr -> Scope -> Scope
+insert name value (Scope scope) =
+  Scope $ scope { vars = Map.insert name value scope.vars }
+
+update :: String -> Expr -> Scope -> Scope
+update name value (Scope scope) =
+  fromMaybe
+    (Scope $ scope { vars = Map.update (\_ -> Just value) name scope.vars })
+    (update name value <$> scope.outer)
+
+enterScope :: Scope -> Scope
+enterScope outer = Scope $ { vars: Map.empty, outer: Just outer }
+
+leaveScope :: Scope -> Scope
+leaveScope (Scope { outer: Just outer }) = outer
+leaveScope scope = scope
 
 type Evaluator = StateT Scope (Except String)
 
 runEvaluator :: forall a. Evaluator a -> Scope -> Either String (a /\ Scope)
 runEvaluator evaluator scope = runExcept $ runStateT evaluator scope
 
-lookupVar :: String -> Evaluator Expr
-lookupVar name = do
+getVar :: String -> Evaluator Expr
+getVar name = do
   scope <- get
   case lookup name scope of
     Just value -> pure value
@@ -30,7 +78,7 @@ evalExpr :: Expr -> Evaluator Expr
 evalExpr intLit@(IntLit _) = pure intLit
 evalExpr boolLit@(BoolLit _) = pure boolLit
 evalExpr nullLit@NullLit = pure nullLit
-evalExpr (Var name) = lookupVar name
+evalExpr (Var name) = getVar name
 evalExpr (BinExpr lhs op rhs) = do
   lhsResult <- evalExpr lhs
   rhsResult <- evalExpr rhs
@@ -55,11 +103,11 @@ evalExpr (BinExpr lhs op rhs) = do
       _ -> throwError "Invalid operation."
     _ -> throwError "Invalid operation."
 
-evalInNewScope :: forall a. Evaluator a -> Evaluator a
-evalInNewScope evaluator = do
-  scope <- get
-  result <- evaluator
-  put scope
+evalBlock :: Array Stmt -> Evaluator Unit
+evalBlock body = do
+  modify_ enterScope
+  result <- traverse_ evalStmt body
+  modify_ leaveScope
   pure result
 
 evalStmt :: Stmt -> Evaluator Unit
@@ -69,11 +117,11 @@ evalStmt (VarStmt name value) = do
     Nothing -> modify_ $ insert name value
     Just _ -> throwError $ "Redefined variable: " <> name
 evalStmt (AssignStmt name value) =
-  lookupVar name *> modify_ (insert name value)
+  getVar name *> modify_ (update name value)
 evalStmt (IfStmt cond thenBody maybeElseBody) = do
   condResult <- evalExpr cond
   case condResult /\ maybeElseBody of
-    (BoolLit true /\ _) -> evalInNewScope $ traverse_ evalStmt thenBody
-    (BoolLit false /\ Just elseBody) -> evalInNewScope $ traverse_ evalStmt elseBody
+    (BoolLit true /\ _) -> evalBlock thenBody
+    (BoolLit false /\ Just elseBody) -> evalBlock elseBody
     (BoolLit false /\ Nothing) -> pure unit
     _ -> throwError "Invalid operation."

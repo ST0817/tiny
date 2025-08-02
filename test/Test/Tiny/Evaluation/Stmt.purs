@@ -3,13 +3,13 @@ module Test.Tiny.Evaluation.Stmt (spec) where
 import Prelude
 
 import Data.Either (Either(..))
-import Data.Map (empty, singleton)
+import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Data.Tuple.Nested ((/\))
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
 import Tiny.Ast (BinOp(..), Expr(..), Stmt(..))
-import Tiny.Evaluation (evalStmt, runEvaluator)
+import Tiny.Evaluation (empty, evalStmt, runEvaluator, singleton)
 
 spec :: Spec Unit
 spec = describe "statement" do
@@ -70,3 +70,19 @@ spec = describe "statement" do
     shouldEqual
       (runEvaluator (evalStmt $ IfStmt cond thenBody $ Just elseBody) empty)
       (Right $ unit /\ empty)
+
+  -- var bar;
+  -- if true {
+  --     bar = 1;
+  -- }
+  it "nested scope" do
+    let
+      barDef = VarStmt "bar" NullLit
+      cond = BoolLit true
+      thenBody = [ AssignStmt "bar" $ IntLit 1 ]
+      ifStmt = IfStmt cond thenBody Nothing
+      stmts = [ barDef, ifStmt ]
+      afterScope = singleton "bar" $ IntLit 1
+    shouldEqual
+      (runEvaluator (traverse_ evalStmt stmts) empty)
+      (Right $ unit /\ afterScope)

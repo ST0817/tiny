@@ -4,7 +4,6 @@ import Prelude
 
 import Data.Either (Either(..))
 import Data.Foldable (traverse_)
-import Data.Map (empty)
 import Data.String (joinWith)
 import Data.Tuple.Nested ((/\))
 import Effect (Effect)
@@ -15,7 +14,7 @@ import Node.EventEmitter (on_)
 import Node.ReadLine (close, createConsoleInterface, lineH, noCompletion, prompt, setPrompt)
 import Parsing (runParser)
 import Parsing.String (parseErrorHuman)
-import Tiny.Evaluation (evalExpr, evalStmt, runEvaluator)
+import Tiny.Evaluation (empty, evalExpr, evalStmt, runEvaluator)
 import Tiny.Parsing (parseSingleExpr, parseStmts)
 
 main :: Effect Unit

@@ -3,12 +3,11 @@ module Test.Tiny.Evaluation.Expr (spec) where
 import Prelude
 
 import Data.Either (Either(..))
-import Data.Map (empty, singleton)
 import Data.Tuple.Nested ((/\))
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
 import Tiny.Ast (BinOp(..), Expr(..))
-import Tiny.Evaluation (evalExpr, runEvaluator)
+import Tiny.Evaluation (empty, evalExpr, runEvaluator, singleton)
 
 spec :: Spec Unit
 spec = describe "expression" do
